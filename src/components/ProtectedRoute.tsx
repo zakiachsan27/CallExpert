@@ -30,8 +30,8 @@ export function ProtectedRoute({ children, requireUser, requireExpert }: Protect
 
   // Check Expert auth
   if (requireExpert && !isExpertLoggedIn) {
-    // Redirect to login with return URL
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    // Redirect to expert login with return URL
+    return <Navigate to="/expert/login" state={{ from: location.pathname }} replace />;
   }
 
   return <>{children}</>;

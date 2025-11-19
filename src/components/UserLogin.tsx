@@ -12,11 +12,8 @@ type UserLoginProps = {
   onBack: () => void;
 };
 
-// Demo mode for development
-const DEMO_MODE = true;
-const DEMO_USERS = [
-  { email: 'user@demo.com', password: 'demo123', id: 'demo-user-1', name: 'Demo User' }
-];
+// Demo mode disabled - using real Supabase auth
+const DEMO_MODE = false;
 
 export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
   const [isLogin, setIsLogin] = useState(true);
@@ -32,35 +29,7 @@ export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
     setIsLoading(true);
 
     try {
-      // Demo mode fallback
-      if (DEMO_MODE) {
-        console.log('Running in DEMO mode');
-        
-        if (isLogin) {
-          // Check demo credentials
-          const demoUser = DEMO_USERS.find(u => u.email === email && u.password === password);
-          if (demoUser) {
-            console.log('Demo login successful');
-            // Simulate delay
-            await new Promise(resolve => setTimeout(resolve, 500));
-            onLoginSuccess(`demo-token-${demoUser.id}`, demoUser.id);
-            return;
-          } else {
-            setError('Email atau password salah. Coba: user@demo.com / demo123');
-            setIsLoading(false);
-            return;
-          }
-        } else {
-          // Demo signup - just create a new demo user
-          console.log('Demo signup successful');
-          await new Promise(resolve => setTimeout(resolve, 500));
-          const newUserId = `demo-user-${Date.now()}`;
-          onLoginSuccess(`demo-token-${newUserId}`, newUserId);
-          return;
-        }
-      }
-
-      // Production mode - use Supabase
+      // Use Supabase Auth
       if (isLogin) {
         // Login using Supabase Auth REST API
         console.log('Attempting login for:', email);
@@ -87,22 +56,29 @@ export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
           onLoginSuccess(data.access_token, data.user.id);
         }
       } else {
-        // Signup - call our custom endpoint
+        // Signup - use Supabase Auth directly
         console.log('Attempting signup for:', email, name);
-        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-92eeba71/user/signup`, {
+        
+        const response = await fetch(`https://${projectId}.supabase.co/auth/v1/signup`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`
+            'apikey': publicAnonKey
           },
-          body: JSON.stringify({ email, password, name })
+          body: JSON.stringify({ 
+            email, 
+            password,
+            data: {
+              name: name
+            }
+          })
         });
 
         const result = await response.json();
         console.log('Signup response:', { ok: response.ok, result });
 
         if (!response.ok) {
-          setError(result.error || 'Signup failed');
+          setError(result.error_description || result.message || 'Signup failed');
           setIsLoading(false);
           return;
         }
@@ -134,13 +110,7 @@ export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
       }
     } catch (err) {
       console.error('Authentication error:', err);
-      
-      // Fallback to demo mode on error
-      if (isLogin) {
-        setError('Server tidak tersedia. Gunakan kredensial demo: user@demo.com / demo123');
-      } else {
-        setError('Server tidak tersedia. Mode demo akan segera aktif.');
-      }
+      setError('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
@@ -156,25 +126,6 @@ export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
         </Button>
 
         <Card className="p-8">
-          {/* Demo Mode Notice */}
-          {DEMO_MODE && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-blue-900 mb-1">Mode Demo Aktif</p>
-                  <p className="text-blue-700 text-sm">
-                    Gunakan kredensial berikut untuk login:
-                  </p>
-                  <div className="bg-white rounded mt-2 p-2 text-sm font-mono">
-                    <div>Email: <span className="text-blue-600">user@demo.com</span></div>
-                    <div>Password: <span className="text-blue-600">demo123</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-          
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">

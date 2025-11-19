@@ -1,15 +1,16 @@
-import { useState } from 'react';
-import { Search, Filter, Users, ChevronDown, User, Award, Receipt, LogOut, LayoutDashboard } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Filter, Users, ChevronDown, User, Award, Receipt, LogOut, LayoutDashboard, Loader2, RefreshCw } from 'lucide-react';
 import { ExpertCard } from './ExpertCard';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from './ui/dialog';
+import { Skeleton } from './ui/skeleton';
 import type { Expert } from '../App';
-import { mockExperts } from '../lib/mockData';
+import { getExperts } from '../services/database';
 
 type ExpertListProps = {
-  onExpertClick: (expert: Expert) => void;
+  onExpertClick: (expertId: string) => void;
   onLoginAsUser?: () => void;
   onLoginAsExpert?: () => void;
   userAccessToken?: string | null;
@@ -36,14 +37,43 @@ export function ExpertList({
   const [selectedSessionTypes, setSelectedSessionTypes] = useState<string[]>([]);
   const [selectedAvailability, setSelectedAvailability] = useState<'all' | 'online' | 'offline'>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [experts, setExperts] = useState<Expert[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Fetch experts from database
+  useEffect(() => {
+    fetchExperts();
+  }, []);
+
+  const fetchExperts = async () => {
+    try {
+      setIsLoading(true);
+      setError('');
+      const data = await getExperts();
+      setExperts(data);
+    } catch (err) {
+      console.error('Error fetching experts:', err);
+      setError('Gagal memuat daftar expert. Silakan refresh halaman.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchExperts();
+  };
 
   // Get all unique expertise
   const allExpertise = Array.from(
-    new Set(mockExperts.flatMap(expert => expert.expertise))
+    new Set(experts.flatMap(expert => expert.expertise))
   );
 
   // Filter experts
-  const filteredExperts = mockExperts.filter(expert => {
+  const filteredExperts = experts.filter(expert => {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -122,6 +152,17 @@ export function ExpertList({
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </Button>
+
               <div className="flex items-center gap-2 text-gray-600 text-sm">
                 <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span>{filteredExperts.length} experts</span>
@@ -375,13 +416,32 @@ export function ExpertList({
 
       {/* Expert Cards Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {filteredExperts.length > 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="space-y-4">
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="text-center py-16">
+            <Users className="w-16 h-16 text-red-300 mx-auto mb-4" />
+            <h3 className="text-red-600 mb-2">Error</h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={fetchExperts}>
+              Coba Lagi
+            </Button>
+          </div>
+        ) : filteredExperts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredExperts.map(expert => (
               <ExpertCard
                 key={expert.id}
                 expert={expert}
-                onClick={() => onExpertClick(expert)}
+                onClick={() => onExpertClick(expert.id)}
               />
             ))}
           </div>

@@ -41,7 +41,8 @@ export function ExpertLoginPage() {
       if (isDemoExpert) {
         // Demo Expert login
         const demoToken = 'demo-expert-token';
-        loginAsExpert(demoToken);
+        const demoUserId = 'demo-expert-user-id';
+        await loginAsExpert(demoToken, demoUserId);
         navigate(returnUrl, { replace: true });
         return;
       }
@@ -72,8 +73,8 @@ export function ExpertLoginPage() {
         throw new Error('Email ini tidak terdaftar sebagai Expert. Silakan hubungi administrator.');
       }
 
-      // Save token
-      loginAsExpert(data.session.access_token);
+      // Save token and wait for login to complete
+      await loginAsExpert(data.session.access_token, data.user.id);
 
       // Redirect to return URL or default
       navigate(returnUrl, { replace: true });

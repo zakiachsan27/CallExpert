@@ -17,48 +17,36 @@ import {
   Receipt
 } from 'lucide-react';
 import type { Booking } from '../App';
-import { projectId } from '../utils/supabase/info.tsx';
+import { getBookingsByUser } from '../services/database';
+import { useAuth } from '../contexts/AuthContext';
 
 type UserTransactionHistoryProps = {
-  accessToken: string;
   onBack: () => void;
 };
 
-export function UserTransactionHistory({ accessToken, onBack }: UserTransactionHistoryProps) {
-  const [bookings, setBookings] = useState<Booking[]>([]);
+export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) {
+  const { userId } = useAuth();
+  const [bookings, setBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchBookings();
-  }, []);
+    if (userId) {
+      fetchBookings();
+    }
+  }, [userId]);
 
   const fetchBookings = async () => {
+    if (!userId) return;
+
     try {
-      console.log('Fetching user bookings with access token');
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-92eeba71/user/bookings`,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`
-          }
-        }
-      );
-
-      console.log('Bookings response:', { ok: response.ok, status: response.status });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to fetch bookings:', errorData);
-        throw new Error(errorData.error || 'Failed to fetch bookings');
-      }
-
-      const data = await response.json();
+      console.log('Fetching user bookings for user:', userId);
+      const data = await getBookingsByUser(userId);
       console.log('Bookings data:', data);
-      setBookings(data.bookings || []);
+      setBookings(data);
     } catch (err) {
       console.error('Error fetching bookings:', err);
-      setError(err instanceof Error ? err.message : 'Gagal memuat riwayat transaksi');
+      setError('Gagal memuat riwayat transaksi');
     } finally {
       setIsLoading(false);
     }
@@ -72,8 +60,9 @@ export function UserTransactionHistory({ accessToken, onBack }: UserTransactionH
     }).format(price);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
+  const formatDate = (dateString: string | Date) => {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    return date.toLocaleDateString('id-ID', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -176,17 +165,17 @@ export function UserTransactionHistory({ accessToken, onBack }: UserTransactionH
                     <div className="flex items-start gap-4 mb-4">
                       {/* Expert Avatar */}
                       <img
-                        src={booking.expert.avatar}
-                        alt={booking.expert.name}
+                        src={booking.expert?.avatar_url || 'https://via.placeholder.com/64'}
+                        alt={booking.expert?.name || 'Expert'}
                         className="w-16 h-16 rounded-full object-cover"
                       />
                       
                       <div className="flex-1">
                         <div className="flex items-start justify-between mb-2">
                           <div>
-                            <h3 className="mb-1">{booking.expert.name}</h3>
+                            <h3 className="mb-1">{booking.expert?.name || 'Unknown Expert'}</h3>
                             <p className="text-gray-600 text-sm">
-                              {booking.expert.role} at {booking.expert.company}
+                              {booking.expert?.role || 'Expert'} {booking.expert?.company ? `at ${booking.expert.company}` : ''}
                             </p>
                           </div>
                           {getStatusBadge(booking.status)}
@@ -197,10 +186,10 @@ export function UserTransactionHistory({ accessToken, onBack }: UserTransactionH
                         {/* Session Details */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="flex items-center gap-2">
-                            {getCategoryIcon(booking.sessionType.category)}
+                            {getCategoryIcon(booking.session_type?.category || 'online-video')}
                             <div>
                               <p className="text-sm text-gray-500">Tipe Sesi</p>
-                              <p>{booking.sessionType.name}</p>
+                              <p>{booking.session_type?.name || 'Consultation'}</p>
                             </div>
                           </div>
 
@@ -208,7 +197,7 @@ export function UserTransactionHistory({ accessToken, onBack }: UserTransactionH
                             <Calendar className="w-5 h-5 text-gray-400" />
                             <div>
                               <p className="text-sm text-gray-500">Tanggal</p>
-                              <p>{formatDate(booking.date)}</p>
+                              <p>{formatDate(booking.booking_date)}</p>
                             </div>
                           </div>
 
@@ -216,7 +205,7 @@ export function UserTransactionHistory({ accessToken, onBack }: UserTransactionH
                             <Clock className="w-5 h-5 text-gray-400" />
                             <div>
                               <p className="text-sm text-gray-500">Waktu</p>
-                              <p>{booking.time} ({booking.sessionType.duration} menit)</p>
+                              <p>{booking.booking_time} ({booking.session_type?.duration || 60} menit)</p>
                             </div>
                           </div>
 

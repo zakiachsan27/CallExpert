@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Calendar as CalendarComponent } from './ui/calendar';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import type { Expert, Booking, SessionType } from '../App';
+import { createBooking } from '../services/database';
+import { useAuth } from '../contexts/AuthContext';
 
 type BookingSectionProps = {
   expert: Expert;
@@ -13,9 +15,12 @@ type BookingSectionProps = {
 };
 
 export function BookingSection({ expert, selectedSessionType, onBookingComplete }: BookingSectionProps) {
+  const { userId } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [topic, setTopic] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   // Generate available time slots (simplified - all weekdays 9-17)
   const getAvailableSlots = () => {
@@ -41,10 +46,37 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
     return day !== 0 && date >= new Date();
   };
 
-  const handleBooking = () => {
-    if (selectedDate && selectedTime && topic.trim()) {
-      const totalPrice = selectedSessionType.price + 2000; // price + admin fee
+  const handleBooking = async () => {
+    if (!selectedDate || !selectedTime || !topic.trim() || !userId) {
+      setError('Mohon lengkapi semua data booking');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      const totalPrice = selectedSessionType.price;
+      
+      // Format date as YYYY-MM-DD
+      const bookingDate = selectedDate.toISOString().split('T')[0];
+      
+      // Create booking in database
+      const bookingId = await createBooking({
+        user_id: userId,
+        expert_id: expert.id,
+        session_type_id: selectedSessionType.id,
+        booking_date: bookingDate,
+        booking_time: selectedTime,
+        topic: topic.trim(),
+        notes: topic.trim(),
+        total_price: totalPrice,
+        meeting_link: `https://meet.google.com/${Math.random().toString(36).substring(7)}`
+      });
+
+      // Create booking object for UI
       const booking: Booking = {
+        id: bookingId,
         expert,
         sessionType: selectedSessionType,
         date: selectedDate,
@@ -56,7 +88,13 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
         status: 'pending',
         paymentStatus: 'waiting'
       };
+
       onBookingComplete(booking);
+    } catch (err) {
+      console.error('Error creating booking:', err);
+      setError('Gagal membuat booking. Silakan coba lagi.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -177,13 +215,27 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
         </div>
       )}
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+          <p className="text-red-600 text-sm">{error}</p>
+        </div>
+      )}
+
       {/* Book Button */}
       <Button
         className="w-full"
-        disabled={!selectedDate || !selectedTime || !topic.trim()}
+        disabled={!selectedDate || !selectedTime || !topic.trim() || isSubmitting}
         onClick={handleBooking}
       >
-        Lanjutkan ke Pembayaran
+        {isSubmitting ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Memproses...
+          </>
+        ) : (
+          'Lanjutkan ke Pembayaran'
+        )}
       </Button>
     </div>
   );

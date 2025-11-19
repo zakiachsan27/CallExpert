@@ -1,16 +1,18 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from '../utils/supabase/info.tsx';
+import { supabase } from '../services/supabase';
+import { getExpertByUserId, createUser } from '../services/database';
 
 type AuthContextType = {
   userAccessToken: string | null;
   expertAccessToken: string | null;
+  userId: string | null;
+  expertId: string | null;
   isUserLoggedIn: boolean;
   isExpertLoggedIn: boolean;
-  loginAsUser: (token: string) => void;
-  loginAsExpert: (token: string) => void;
-  logoutUser: () => void;
-  logoutExpert: () => void;
+  loginAsUser: (token: string, userId: string) => Promise<void>;
+  loginAsExpert: (token: string, userId: string) => Promise<void>;
+  logoutUser: () => Promise<void>;
+  logoutExpert: () => Promise<void>;
   isLoading: boolean;
 };
 
@@ -19,81 +21,140 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [userAccessToken, setUserAccessToken] = useState<string | null>(null);
   const [expertAccessToken, setExpertAccessToken] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [expertId, setExpertId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize auth state from localStorage on mount
+  // Initialize auth state from Supabase session on mount
   useEffect(() => {
-    const savedUserToken = localStorage.getItem('user_access_token');
-    const savedExpertToken = localStorage.getItem('expert_access_token');
-
-    if (savedUserToken) {
-      // Verify token is still valid
-      verifyToken(savedUserToken, 'user').then(isValid => {
-        if (isValid) {
-          setUserAccessToken(savedUserToken);
-        } else {
-          localStorage.removeItem('user_access_token');
-        }
-      });
-    }
-
-    if (savedExpertToken) {
-      // Verify token is still valid
-      verifyToken(savedExpertToken, 'expert').then(isValid => {
-        if (isValid) {
-          setExpertAccessToken(savedExpertToken);
-        } else {
-          localStorage.removeItem('expert_access_token');
-        }
-      });
-    }
-
-    setIsLoading(false);
+    initializeAuth();
   }, []);
 
-  const verifyToken = async (token: string, role: 'user' | 'expert'): Promise<boolean> => {
+  const initializeAuth = async () => {
     try {
-      const supabase = createClient(
-        `https://${projectId}.supabase.co`,
-        publicAnonKey
-      );
-      
-      const { data: { user }, error } = await supabase.auth.getUser(token);
-      
-      if (error || !user) {
-        return false;
-      }
+      // Get current session from Supabase
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-      return true;
+      if (error) throw error;
+
+      if (session?.user) {
+        const user = session.user;
+        const token = session.access_token;
+
+        // Check if user is an expert
+        const expert = await getExpertByUserId(user.id);
+
+        if (expert) {
+          // User is an expert
+          setExpertAccessToken(token);
+          setUserId(user.id);
+          setExpertId(expert.id);
+          localStorage.setItem('expert_access_token', token);
+          localStorage.setItem('expert_id', expert.id);
+          localStorage.setItem('user_id', user.id);
+        } else {
+          // Regular user
+          setUserAccessToken(token);
+          setUserId(user.id);
+          localStorage.setItem('user_access_token', token);
+          localStorage.setItem('user_id', user.id);
+        }
+      }
     } catch (error) {
-      console.error('Token verification error:', error);
-      return false;
+      console.error('Auth initialization error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const loginAsUser = (token: string) => {
-    setUserAccessToken(token);
-    localStorage.setItem('user_access_token', token);
+  const loginAsUser = async (token: string, authUserId: string) => {
+    try {
+      setUserAccessToken(token);
+      setUserId(authUserId);
+      localStorage.setItem('user_access_token', token);
+      localStorage.setItem('user_id', authUserId);
+
+      // Ensure user exists in users table
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) {
+        await createUser({
+          id: user.id,
+          email: user.email || '',
+          name: user.user_metadata?.name || user.email?.split('@')[0] || 'User'
+        });
+      }
+    } catch (error) {
+      console.error('Error in loginAsUser:', error);
+      throw error;
+    }
   };
 
-  const loginAsExpert = (token: string) => {
-    setExpertAccessToken(token);
-    localStorage.setItem('expert_access_token', token);
+  const loginAsExpert = async (token: string, authUserId: string) => {
+    try {
+      // Check if this is demo mode
+      const isDemoMode = token === 'demo-expert-token' && authUserId === 'demo-expert-user-id';
+
+      if (isDemoMode) {
+        // Demo mode - set states without database verification
+        setExpertAccessToken(token);
+        setUserId(authUserId);
+        setExpertId('demo-expert-id');
+        localStorage.setItem('expert_access_token', token);
+        localStorage.setItem('user_id', authUserId);
+        localStorage.setItem('expert_id', 'demo-expert-id');
+        return;
+      }
+
+      // Real mode - verify this user is actually an expert
+      const expert = await getExpertByUserId(authUserId);
+
+      if (!expert) {
+        throw new Error('User is not registered as an expert');
+      }
+
+      setExpertAccessToken(token);
+      setUserId(authUserId);
+      setExpertId(expert.id);
+      localStorage.setItem('expert_access_token', token);
+      localStorage.setItem('user_id', authUserId);
+      localStorage.setItem('expert_id', expert.id);
+    } catch (error) {
+      console.error('Error in loginAsExpert:', error);
+      throw error;
+    }
   };
 
-  const logoutUser = () => {
-    setUserAccessToken(null);
-    localStorage.removeItem('user_access_token');
+  const logoutUser = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUserAccessToken(null);
+      setUserId(null);
+      localStorage.removeItem('user_access_token');
+      localStorage.removeItem('user_id');
+    } catch (error) {
+      console.error('Error in logoutUser:', error);
+    }
   };
 
-  const logoutExpert = () => {
-    setExpertAccessToken(null);
-    localStorage.removeItem('expert_access_token');
+  const logoutExpert = async () => {
+    try {
+      await supabase.auth.signOut();
+      setExpertAccessToken(null);
+      setUserId(null);
+      setExpertId(null);
+      localStorage.removeItem('expert_access_token');
+      localStorage.removeItem('user_id');
+      localStorage.removeItem('expert_id');
+    } catch (error) {
+      console.error('Error in logoutExpert:', error);
+    }
   };
 
   const value = {
     userAccessToken,
     expertAccessToken,
+    userId,
+    expertId,
     isUserLoggedIn: !!userAccessToken,
     isExpertLoggedIn: !!expertAccessToken,
     loginAsUser,

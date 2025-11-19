@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ExpertDetail } from '../components/ExpertDetail';
 import { Loader2 } from 'lucide-react';
 import type { Expert } from '../App';
+import { getExpertById } from '../services/database';
 
-// Demo experts data - same as ExpertList
+// Demo experts data - fallback only (kept for safety)
 const demoExperts: Expert[] = [
   {
     id: '1',
@@ -241,12 +242,22 @@ export function ExpertDetailPage() {
     setError('');
 
     try {
-      // Try to fetch from backend first
-      // For now, use demo data
-      const foundExpert = demoExperts.find(e => e.id === expertId);
+      if (!expertId) {
+        setError('Expert ID tidak valid');
+        return;
+      }
+
+      // Fetch from database
+      const foundExpert = await getExpertById(expertId);
       
       if (!foundExpert) {
-        setError('Expert tidak ditemukan');
+        // Fallback to demo data if not found in database
+        const demoExpert = demoExperts.find(e => e.id === expertId);
+        if (demoExpert) {
+          setExpert(demoExpert);
+        } else {
+          setError('Expert tidak ditemukan');
+        }
         return;
       }
 

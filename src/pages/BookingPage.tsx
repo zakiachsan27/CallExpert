@@ -5,8 +5,9 @@ import { BookingFlow } from '../components/BookingFlow';
 import { BookingSuccess } from '../components/BookingSuccess';
 import { Loader2 } from 'lucide-react';
 import type { Expert, SessionType, Booking } from '../App';
+import { getExpertById } from '../services/database';
 
-// Same demo experts data
+// Demo experts data - fallback only
 const demoExperts: Expert[] = [
   {
     id: '1',
@@ -150,8 +151,18 @@ export function BookingPage() {
     setError('');
 
     try {
-      // Find expert (use demo data for now)
-      const foundExpert = demoExperts.find(e => e.id === expertId);
+      if (!expertId) {
+        setError('Expert ID tidak valid');
+        return;
+      }
+
+      // Fetch expert from database
+      let foundExpert = await getExpertById(expertId);
+      
+      // Fallback to demo data if not found
+      if (!foundExpert) {
+        foundExpert = demoExperts.find(e => e.id === expertId) || null;
+      }
       
       if (!foundExpert) {
         setError('Expert tidak ditemukan');

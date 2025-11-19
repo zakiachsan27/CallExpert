@@ -485,46 +485,51 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file type
+    if (!file.name.endsWith('.pdf')) {
+      setError('Saat ini hanya file PDF yang didukung. File DOCX akan segera tersedia.');
+      return;
+    }
+
     setResumeFile(file);
     setIsParsingResume(true);
+    setError('');
 
-    // Mock parsing resume - dalam production, ini akan call AI service untuk parse PDF/DOCX
-    setTimeout(() => {
-      // Simulate auto-filled data from resume
-      setName('John Doe');
-      setCompany('Tech Corp');
-      setRole('Senior Product Manager');
-      setExperience(8);
-      setBio('Experienced product manager with 8+ years in tech industry, specializing in B2B SaaS products and agile methodologies.');
-      
-      setLocationCity('Jakarta');
-      setLocationCountry('Indonesia');
-      
-      setExpertise(['Product Management', 'Agile', 'User Research']);
-      setSkills(['Figma', 'Jira', 'SQL', 'Python']);
-      
-      setWorkExperience([
-        {
-          title: 'Senior Product Manager',
-          company: 'Tech Corp',
-          period: '2020 - Present',
-          description: 'Led product development for B2B SaaS platform with 50K+ users. Increased user engagement by 40% through data-driven feature prioritization.'
-        },
-        {
-          title: 'Product Manager',
-          company: 'Startup Inc',
-          period: '2017 - 2020',
-          description: 'Managed product roadmap and collaborated with cross-functional teams to deliver 15+ features.'
-        }
-      ]);
-      
-      setEducation(['MBA from Stanford University', 'BS in Computer Science from MIT']);
-      setAchievements(['Certified Scrum Master (CSM)', 'Product Management Certificate from ProductSchool']);
-      
+    try {
+      // Import parser dynamically
+      const { parseResume } = await import('../services/resumeParser');
+
+      // Parse resume and extract data
+      const parsedData = await parseResume(file);
+
+      // Auto-fill form fields with parsed data
+      if (parsedData.name) setName(parsedData.name);
+      if (parsedData.email) setEmail(parsedData.email);
+      if (parsedData.company) setCompany(parsedData.company);
+      if (parsedData.role) setRole(parsedData.role);
+      if (parsedData.experience > 0) setExperience(parsedData.experience);
+      if (parsedData.bio) setBio(parsedData.bio);
+
+      if (parsedData.location.city) setLocationCity(parsedData.location.city);
+      if (parsedData.location.country) setLocationCountry(parsedData.location.country);
+
+      if (parsedData.expertise.length > 0) setExpertise(parsedData.expertise);
+      if (parsedData.skills.length > 0) setSkills(parsedData.skills);
+
+      if (parsedData.workExperience.length > 0) setWorkExperience(parsedData.workExperience);
+      if (parsedData.education.length > 0) setEducation(parsedData.education);
+      if (parsedData.achievements.length > 0) setAchievements(parsedData.achievements);
+
       setIsParsingResume(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 2000);
+
+      console.log('Resume parsed successfully:', parsedData);
+    } catch (err: any) {
+      console.error('Error parsing resume:', err);
+      setError(err.message || 'Gagal memproses resume. Pastikan file PDF valid dan dapat dibaca.');
+      setIsParsingResume(false);
+    }
   };
 
   if (isLoading) {

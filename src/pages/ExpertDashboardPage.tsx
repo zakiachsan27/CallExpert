@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export function ExpertDashboardPage() {
   const navigate = useNavigate();
-  const { expertAccessToken, logoutExpert } = useAuth();
+  const { expertAccessToken, expertId, logoutExpert } = useAuth();
 
   const handleLogout = () => {
     logoutExpert();
@@ -12,10 +12,10 @@ export function ExpertDashboardPage() {
   };
 
   return (
-    <ExpertDashboardWithTabs 
-      accessToken={expertAccessToken || 'demo-expert-token'} 
-      expertId="demo-expert-id"
-      onBack={() => navigate('/')} 
+    <ExpertDashboardWithTabs
+      accessToken={expertAccessToken || 'demo-expert-token'}
+      expertId={expertId || 'demo-expert-id'}
+      onBack={() => navigate('/')}
       onLogout={handleLogout}
     />
   );
