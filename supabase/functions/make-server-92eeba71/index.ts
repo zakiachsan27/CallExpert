@@ -14,10 +14,11 @@ app.use(
   "/*",
   cors({
     origin: "*",
-    allowHeaders: ["Content-Type", "Authorization"],
-    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization", "apikey", "x-client-info"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     exposeHeaders: ["Content-Length"],
     maxAge: 600,
+    credentials: true,
   }),
 );
 
@@ -262,8 +263,10 @@ app.get("/make-server-92eeba71/expert/profile", async (c) => {
       id: dbData.id,
       email: dbData.email,
       name: dbData.name,
+      slug: dbData.slug,
       avatar: dbData.avatar_url,
       bio: dbData.bio,
+      programHighlight: dbData.program_highlight,
       company: dbData.company,
       jobTitle: dbData.role,
       experience: dbData.experience,
@@ -328,25 +331,24 @@ app.put("/make-server-92eeba71/expert/profile", async (c) => {
     console.log('Found expertId:', expertId, 'for userId:', user.id);
 
     // 1. Update basic profile to public.experts
-    const expertDataForDB = {
-      name: updates.name || undefined,
-      email: updates.email || undefined,
-      avatar_url: updates.avatar || undefined,
-      bio: updates.bio || undefined,
-      company: updates.company || undefined,
-      role: updates.jobTitle || undefined,
-      experience: updates.experience !== undefined ? updates.experience : undefined,
-      location_city: updates.location?.city || undefined,
-      location_country: updates.location?.country || undefined,
-      location_address: updates.location?.address || undefined,
-      availability: updates.availability || undefined,
+    const expertDataForDB: Record<string, any> = {
       updated_at: new Date().toISOString()
     };
 
-    // Remove undefined values
-    Object.keys(expertDataForDB).forEach(key => 
-      expertDataForDB[key as keyof typeof expertDataForDB] === undefined && delete expertDataForDB[key as keyof typeof expertDataForDB]
-    );
+    // Only include fields that are explicitly provided in updates
+    if (updates.name !== undefined) expertDataForDB.name = updates.name;
+    if (updates.email !== undefined) expertDataForDB.email = updates.email;
+    if (updates.slug !== undefined) expertDataForDB.slug = updates.slug;
+    if (updates.avatar !== undefined) expertDataForDB.avatar_url = updates.avatar;
+    if (updates.bio !== undefined) expertDataForDB.bio = updates.bio;
+    if (updates.programHighlight !== undefined) expertDataForDB.program_highlight = updates.programHighlight;
+    if (updates.company !== undefined) expertDataForDB.company = updates.company;
+    if (updates.jobTitle !== undefined) expertDataForDB.role = updates.jobTitle;
+    if (updates.experience !== undefined) expertDataForDB.experience = updates.experience;
+    if (updates.location?.city !== undefined) expertDataForDB.location_city = updates.location.city;
+    if (updates.location?.country !== undefined) expertDataForDB.location_country = updates.location.country;
+    if (updates.location?.address !== undefined) expertDataForDB.location_address = updates.location.address;
+    if (updates.availability !== undefined) expertDataForDB.availability = updates.availability;
 
     // Update experts table - use expertId not user.id
     const { error: dbError } = await supabase

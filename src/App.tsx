@@ -9,6 +9,7 @@ import { ExpertDetailPage } from './pages/ExpertDetailPage';
 import { BookingPage } from './pages/BookingPage';
 import { UserTransactionsPage } from './pages/UserTransactionsPage';
 import { ExpertDashboardPage } from './pages/ExpertDashboardPage';
+import { InvoicePage } from './pages/InvoicePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 // Log environment info for debugging
@@ -36,6 +37,7 @@ export type DigitalProduct = {
 
 export type Expert = {
   id: string;
+  slug?: string;
   name: string;
   role: string;
   company: string;
@@ -44,6 +46,7 @@ export type Expert = {
   reviewCount: number;
   expertise: string[];
   bio: string;
+  programHighlight?: string;
   experience: number;
   sessionTypes: SessionType[];
   location: {
@@ -65,6 +68,7 @@ export type Expert = {
 
 export type Booking = {
   id?: string;
+  orderId?: string;
   expert: Expert;
   sessionType: SessionType;
   date: Date | string;
@@ -88,16 +92,17 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/expert/login" element={<ExpertLoginPage />} />
-          <Route path="/expert/:expertId" element={<ExpertDetailPage />} />
+          <Route path="/expert/:slug" element={<ExpertDetailPage />} />
+          <Route path="/invoice/:orderId" element={<InvoicePage />} />
 
           {/* Protected User Routes */}
-          <Route 
-            path="/expert/:expertId/booking" 
+          <Route
+            path="/expert/:slug/booking"
             element={
               <ProtectedRoute requireUser>
                 <BookingPage />
               </ProtectedRoute>
-            } 
+            }
           />
           <Route 
             path="/user/transactions" 

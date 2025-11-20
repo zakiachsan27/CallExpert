@@ -10,8 +10,10 @@ export interface ExpertProfile {
   user_id: string;
   name: string;
   email: string;
+  slug?: string;
   avatar_url?: string;
   bio?: string;
+  program_highlight?: string;
   company?: string;
   role?: string;
   experience?: number;
@@ -58,6 +60,7 @@ export interface ExpertWithRelations extends ExpertProfile {
 function convertToAppExpert(dbExpert: ExpertWithRelations): Expert {
   return {
     id: dbExpert.id,
+    slug: dbExpert.slug,
     name: dbExpert.name,
     role: dbExpert.role || '',
     company: dbExpert.company || '',
@@ -66,6 +69,7 @@ function convertToAppExpert(dbExpert: ExpertWithRelations): Expert {
     reviewCount: dbExpert.review_count,
     expertise: dbExpert.expertise.map(e => e.name),
     bio: dbExpert.bio || '',
+    programHighlight: dbExpert.program_highlight,
     experience: dbExpert.experience || 0,
     location: {
       city: dbExpert.location_city || '',
@@ -188,6 +192,48 @@ export async function getExpertById(expertId: string): Promise<Expert | null> {
   }
 }
 
+// Get expert by slug
+export async function getExpertBySlug(slug: string): Promise<Expert | null> {
+  try {
+    const { data: expert, error } = await supabase
+      .from('experts')
+      .select('*')
+      .eq('slug', slug)
+      .or('is_active.eq.true,is_active.is.null')
+      .single();
+
+    if (error) throw error;
+    if (!expert) return null;
+
+    // Fetch related data
+    const [expertise, skills, achievements, education, workExperience, sessionTypes, digitalProducts] = await Promise.all([
+      supabase.from('expert_expertise').select('*').eq('expert_id', expert.id),
+      supabase.from('expert_skills').select('*').eq('expert_id', expert.id),
+      supabase.from('expert_achievements').select('*').eq('expert_id', expert.id),
+      supabase.from('expert_education').select('*').eq('expert_id', expert.id),
+      supabase.from('expert_work_experience').select('*').eq('expert_id', expert.id),
+      supabase.from('session_types').select('*').eq('expert_id', expert.id).eq('is_active', true),
+      supabase.from('digital_products').select('*').eq('expert_id', expert.id).eq('is_active', true)
+    ]);
+
+    const expertWithRelations: ExpertWithRelations = {
+      ...expert,
+      expertise: expertise.data || [],
+      skills: skills.data || [],
+      achievements: achievements.data || [],
+      education: education.data || [],
+      work_experience: workExperience.data || [],
+      session_types: sessionTypes.data || [],
+      digital_products: digitalProducts.data || []
+    };
+
+    return convertToAppExpert(expertWithRelations);
+  } catch (error) {
+    console.error('Error fetching expert by slug:', error);
+    throw error;
+  }
+}
+
 // Get expert by user_id
 export async function getExpertByUserId(userId: string): Promise<Expert | null> {
   // Validate input to prevent undefined/null queries
@@ -213,6 +259,30 @@ export async function getExpertByUserId(userId: string): Promise<Expert | null> 
   } catch (error) {
     console.error('Error fetching expert by user_id:', error);
     return null;
+  }
+}
+
+// Check if slug is available
+export async function isSlugAvailable(slug: string, expertId?: string): Promise<boolean> {
+  try {
+    let query = supabase
+      .from('experts')
+      .select('id')
+      .eq('slug', slug);
+
+    // If expertId is provided, exclude it from the check (for updates)
+    if (expertId) {
+      query = query.neq('id', expertId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    return !data || data.length === 0;
+  } catch (error) {
+    console.error('Error checking slug availability:', error);
+    throw error;
   }
 }
 
@@ -501,11 +571,12 @@ export interface BookingData {
   topic: string;
   notes?: string;
   total_price: number;
+  order_id?: string;
   payment_method?: 'credit-card' | 'bank-transfer' | 'e-wallet';
   meeting_link?: string;
 }
 
-export async function createBooking(data: BookingData): Promise<string> {
+export async function createBooking(data: BookingData): Promise<{ id: string; order_id: string }> {
   try {
     const { data: result, error } = await supabase
       .from('bookings')
@@ -514,7 +585,7 @@ export async function createBooking(data: BookingData): Promise<string> {
       .single();
 
     if (error) throw error;
-    return result.id;
+    return { id: result.id, order_id: result.order_id };
   } catch (error) {
     console.error('Error creating booking:', error);
     throw error;
@@ -591,6 +662,42 @@ export async function updateBookingPaymentStatus(
     if (error) throw error;
   } catch (error) {
     console.error('Error updating payment status:', error);
+    throw error;
+  }
+}
+
+export async function getBookingByOrderId(orderId: string): Promise<any | null> {
+  try {
+    // First, get the booking
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('order_id', orderId)
+      .single();
+
+    if (bookingError) {
+      if (bookingError.code === 'PGRST116') return null; // Not found
+      throw bookingError;
+    }
+
+    if (!booking) return null;
+
+    // Then fetch related data separately to avoid RLS issues
+    const [expertData, sessionTypeData, userData] = await Promise.all([
+      supabase.from('experts').select('*').eq('id', booking.expert_id).single(),
+      supabase.from('session_types').select('*').eq('id', booking.session_type_id).single(),
+      booking.user_id ? supabase.from('users').select('*').eq('id', booking.user_id).single() : Promise.resolve({ data: null, error: null })
+    ]);
+
+    // Combine the data
+    return {
+      ...booking,
+      expert: expertData.data,
+      session_type: sessionTypeData.data,
+      user: userData.data
+    };
+  } catch (error) {
+    console.error('Error fetching booking by order_id:', error);
     throw error;
   }
 }

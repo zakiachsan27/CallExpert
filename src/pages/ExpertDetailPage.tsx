@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ExpertDetail } from '../components/ExpertDetail';
 import { Loader2 } from 'lucide-react';
 import type { Expert } from '../App';
-import { getExpertById } from '../services/database';
+import { getExpertBySlug } from '../services/database';
 
 // Demo experts data - fallback only (kept for safety)
 const demoExperts: Expert[] = [
@@ -227,7 +227,7 @@ const demoExperts: Expert[] = [
 ];
 
 export function ExpertDetailPage() {
-  const { expertId } = useParams<{ expertId: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const [expert, setExpert] = useState<Expert | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -235,29 +235,23 @@ export function ExpertDetailPage() {
 
   useEffect(() => {
     fetchExpertDetail();
-  }, [expertId]);
+  }, [slug]);
 
   const fetchExpertDetail = async () => {
     setIsLoading(true);
     setError('');
 
     try {
-      if (!expertId) {
-        setError('Expert ID tidak valid');
+      if (!slug) {
+        setError('Expert slug tidak valid');
         return;
       }
 
-      // Fetch from database
-      const foundExpert = await getExpertById(expertId);
-      
+      // Fetch from database by slug
+      const foundExpert = await getExpertBySlug(slug);
+
       if (!foundExpert) {
-        // Fallback to demo data if not found in database
-        const demoExpert = demoExperts.find(e => e.id === expertId);
-        if (demoExpert) {
-          setExpert(demoExpert);
-        } else {
-          setError('Expert tidak ditemukan');
-        }
+        setError('Expert tidak ditemukan');
         return;
       }
 
@@ -275,8 +269,8 @@ export function ExpertDetailPage() {
   };
 
   const handleBookingClick = (sessionTypeId: string) => {
-    // Navigate to booking page with session type
-    navigate(`/expert/${expertId}/booking`, { state: { sessionTypeId } });
+    // Navigate to booking page with session type using slug
+    navigate(`/expert/${slug}/booking`, { state: { sessionTypeId } });
   };
 
   if (isLoading) {

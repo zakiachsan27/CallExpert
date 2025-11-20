@@ -5,7 +5,7 @@ import { BookingFlow } from '../components/BookingFlow';
 import { BookingSuccess } from '../components/BookingSuccess';
 import { Loader2 } from 'lucide-react';
 import type { Expert, SessionType, Booking } from '../App';
-import { getExpertById } from '../services/database';
+import { getExpertBySlug } from '../services/database';
 
 // Demo experts data - fallback only
 const demoExperts: Expert[] = [
@@ -116,11 +116,11 @@ const demoExperts: Expert[] = [
 ];
 
 export function BookingPage() {
-  const { expertId } = useParams<{ expertId: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { isUserLoggedIn } = useAuth();
-  
+
   const [expert, setExpert] = useState<Expert | null>(null);
   const [selectedSessionType, setSelectedSessionType] = useState<SessionType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,36 +134,31 @@ export function BookingPage() {
     // Check if user is logged in
     if (!isUserLoggedIn) {
       // Redirect to login with return URL
-      navigate('/login', { 
-        state: { 
-          from: `/expert/${expertId}/booking`,
+      navigate('/login', {
+        state: {
+          from: `/expert/${slug}/booking`,
           loginAs: 'user'
-        } 
+        }
       });
       return;
     }
 
     fetchExpertAndSession();
-  }, [expertId, sessionTypeId, isUserLoggedIn]);
+  }, [slug, sessionTypeId, isUserLoggedIn]);
 
   const fetchExpertAndSession = async () => {
     setIsLoading(true);
     setError('');
 
     try {
-      if (!expertId) {
-        setError('Expert ID tidak valid');
+      if (!slug) {
+        setError('Expert slug tidak valid');
         return;
       }
 
-      // Fetch expert from database
-      let foundExpert = await getExpertById(expertId);
-      
-      // Fallback to demo data if not found
-      if (!foundExpert) {
-        foundExpert = demoExperts.find(e => e.id === expertId) || null;
-      }
-      
+      // Fetch expert from database by slug
+      const foundExpert = await getExpertBySlug(slug);
+
       if (!foundExpert) {
         setError('Expert tidak ditemukan');
         return;
@@ -173,7 +168,7 @@ export function BookingPage() {
 
       // Find session type
       const foundSession = foundExpert.sessionTypes.find(st => st.id === sessionTypeId);
-      
+
       if (!foundSession) {
         // Default to first session type
         setSelectedSessionType(foundExpert.sessionTypes[0]);
@@ -189,11 +184,17 @@ export function BookingPage() {
   };
 
   const handleBookingComplete = (bookingData: Booking) => {
-    setBooking(bookingData);
+    // Redirect to invoice page with unique order_id
+    if (bookingData.orderId) {
+      navigate(`/invoice/${bookingData.orderId}`);
+    } else {
+      // Fallback: show booking success component (legacy flow)
+      setBooking(bookingData);
+    }
   };
 
   const handleBackToExpert = () => {
-    navigate(`/expert/${expertId}`);
+    navigate(`/expert/${slug}`);
   };
 
   const handleBackToHome = () => {

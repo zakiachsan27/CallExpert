@@ -127,6 +127,17 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
               <p className="text-gray-700 mt-3 leading-relaxed">{expert.bio}</p>
             </Card>
 
+            {/* Program Highlight */}
+            {expert.programHighlight && (
+              <Card className="p-6 border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-purple-50">
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="w-5 h-5 text-blue-600" />
+                  <h2 className="text-blue-900">Program Highlight</h2>
+                </div>
+                <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{expert.programHighlight}</p>
+              </Card>
+            )}
+
             {/* Work Experience */}
             {expert.workExperience && expert.workExperience.length > 0 && (
               <Card className="p-6">

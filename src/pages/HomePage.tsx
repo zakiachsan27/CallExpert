@@ -9,8 +9,8 @@ export function HomePage() {
   const navigate = useNavigate();
   const { isUserLoggedIn, isExpertLoggedIn, logoutUser, logoutExpert } = useAuth();
 
-  const handleExpertClick = (expertId: string) => {
-    navigate(`/expert/${expertId}`);
+  const handleExpertClick = (slugOrId: string) => {
+    navigate(`/expert/${slugOrId}`);
   };
 
   return (

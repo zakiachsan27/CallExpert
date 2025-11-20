@@ -6,6 +6,7 @@ import { Separator } from './ui/separator';
 import { Label } from './ui/label';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Input } from './ui/input';
+import { MidtransPayment } from './MidtransPayment';
 import type { Booking } from '../App';
 
 type BookingSuccessProps = {
@@ -20,10 +21,11 @@ type EWalletType = 'gopay' | 'ovo' | 'dana' | 'shopeepay';
 export function BookingSuccess({ booking: initialBooking, onBackToHome }: BookingSuccessProps) {
   const [copied, setCopied] = useState(false);
   const [booking, setBooking] = useState(initialBooking);
+  const [useMidtrans, setUseMidtrans] = useState(true); // Toggle to use Midtrans or legacy payment
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(booking.paymentMethod || 'credit-card');
   const [selectedBank, setSelectedBank] = useState<BankType>('BCA');
   const [selectedEWallet, setSelectedEWallet] = useState<EWalletType | null>(null);
-  
+
   // Credit Card Form State
   const [cardName, setCardName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -164,6 +166,17 @@ export function BookingSuccess({ booking: initialBooking, onBackToHome }: Bookin
 
   const isPaid = booking.paymentStatus === 'paid';
 
+  const handlePaymentSuccess = () => {
+    setBooking({
+      ...booking,
+      paymentStatus: 'paid'
+    });
+  };
+
+  const handlePaymentError = (error: string) => {
+    console.error('Payment error:', error);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
       <Card className="max-w-2xl w-full p-8">
@@ -292,8 +305,19 @@ export function BookingSuccess({ booking: initialBooking, onBackToHome }: Bookin
 
           <Separator />
 
-          {/* Payment Method Selection - Only show if not paid */}
-          {!isPaid && (
+          {/* Midtrans Payment Integration */}
+          {!isPaid && useMidtrans && (
+            <div className="mb-6">
+              <MidtransPayment
+                booking={booking}
+                onPaymentSuccess={handlePaymentSuccess}
+                onPaymentError={handlePaymentError}
+              />
+            </div>
+          )}
+
+          {/* Payment Method Selection - Only show if not paid and not using Midtrans */}
+          {!isPaid && !useMidtrans && (
             <>
               <div>
                 <h3 className="mb-4">Pilih Metode Pembayaran</h3>

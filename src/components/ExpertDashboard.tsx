@@ -37,6 +37,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import type { Expert, SessionType, DigitalProduct } from '../App';
 import { projectId } from '../utils/supabase/info.tsx';
+import { isSlugAvailable } from '../services/database';
 
 type ExpertDashboardProps = {
   accessToken: string;
@@ -56,10 +57,14 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
   // Basic Info
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [slug, setSlug] = useState('');
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [avatar, setAvatar] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState('');
   const [bio, setBio] = useState('');
+  const [programHighlight, setProgramHighlight] = useState('');
   const [company, setCompany] = useState('');
   const [role, setRole] = useState('');
   const [experience, setExperience] = useState(0);
@@ -125,6 +130,36 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
     };
   }, []);
 
+  // Check slug availability with debounce
+  useEffect(() => {
+    if (!slug || slug === originalData?.slug) {
+      setSlugAvailable(null);
+      return;
+    }
+
+    // Validate slug format
+    const slugRegex = /^[a-z0-9-]+$/;
+    if (!slugRegex.test(slug)) {
+      setSlugAvailable(false);
+      return;
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setIsCheckingSlug(true);
+      try {
+        const available = await isSlugAvailable(slug, expertId);
+        setSlugAvailable(available);
+      } catch (error) {
+        console.error('Error checking slug availability:', error);
+        setSlugAvailable(false);
+      } finally {
+        setIsCheckingSlug(false);
+      }
+    }, 500); // Debounce for 500ms
+
+    return () => clearTimeout(timeoutId);
+  }, [slug, expertId, originalData?.slug]);
+
   // Detect changes
   useEffect(() => {
     if (!originalData) {
@@ -135,7 +170,9 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
     const currentData = {
       name,
       email,
+      slug,
       bio,
+      programHighlight,
       company,
       role,
       experience: String(experience),
@@ -170,10 +207,12 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
       setHasChanges(servicesChanged);
     } else {
       // Check profile data
-      const profileChanged = 
+      const profileChanged =
         currentData.name !== originalData.name ||
         currentData.email !== originalData.email ||
+        currentData.slug !== originalData.slug ||
         currentData.bio !== originalData.bio ||
+        currentData.programHighlight !== originalData.programHighlight ||
         currentData.company !== originalData.company ||
         currentData.role !== originalData.role ||
         currentData.experience !== originalData.experience ||
@@ -192,7 +231,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
       setHasChanges(profileChanged);
     }
   }, [
-    name, email, bio, company, role, experience, 
+    name, email, slug, bio, programHighlight, company, role, experience,
     locationCity, locationCountry, locationAddress,
     expertise, skills, workExperience, education, achievements,
     sessionTypes, digitalProducts, availableDays, availableTimeSlots,
@@ -220,8 +259,10 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
       // Populate form with existing data
       setName(expert.name || '');
       setEmail(expert.email || '');
+      setSlug(expert.slug || '');
       setAvatar(expert.avatar || '');
       setBio(expert.bio || '');
+      setProgramHighlight(expert.programHighlight || '');
       setCompany(expert.company || '');
       setRole(expert.jobTitle || expert.role || '');
       setExperience(expert.experience || 0);
@@ -245,7 +286,9 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
       setOriginalData({
         name: expert.name || '',
         email: expert.email || '',
+        slug: expert.slug || '',
         bio: expert.bio || '',
+        programHighlight: expert.programHighlight || '',
         company: expert.company || '',
         role: expert.jobTitle || expert.role || '',
         experience: String(expert.experience || 0),
@@ -276,11 +319,27 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
     setError('');
 
     try {
+      // Validate slug if changed
+      if (slug !== originalData?.slug) {
+        if (!slug) {
+          setError('Slug tidak boleh kosong');
+          setIsSaving(false);
+          return;
+        }
+        if (slugAvailable === false) {
+          setError('Slug sudah digunakan atau format tidak valid');
+          setIsSaving(false);
+          return;
+        }
+      }
+
       const updatedProfile = {
         name,
         email,
+        slug,
         avatar,
         bio,
+        programHighlight,
         company,
         jobTitle: role,
         experience,
@@ -314,7 +373,9 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
       );
 
       if (!response.ok) {
-        throw new Error('Failed to save profile');
+        const errorData = await response.json();
+        console.error('API Error Response:', errorData);
+        throw new Error(errorData.error || 'Failed to save profile');
       }
 
       setSaveSuccess(true);
@@ -324,7 +385,9 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
       setOriginalData({
         name,
         email,
+        slug,
         bio,
+        programHighlight,
         company,
         role,
         experience: String(experience),
@@ -347,7 +410,9 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
       
     } catch (err) {
       console.error('Error saving profile:', err);
-      setError('Gagal menyimpan profil');
+      const errorMessage = err instanceof Error ? err.message : 'Gagal menyimpan profil';
+      setError(errorMessage);
+      setIsSaving(false);
     } finally {
       setIsSaving(false);
     }
@@ -672,6 +737,48 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                     />
                   </div>
 
+                  <div className="md:col-span-2">
+                    <Label htmlFor="slug">Custom URL Slug *</Label>
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <div className="flex-1 relative">
+                          <Input
+                            id="slug"
+                            value={slug}
+                            onChange={(e) => {
+                              // Auto-convert to lowercase and replace spaces with dashes
+                              const newSlug = e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                              setSlug(newSlug);
+                            }}
+                            placeholder="your-custom-url"
+                            className={slugAvailable === false ? 'border-red-500' : slugAvailable === true ? 'border-green-500' : ''}
+                          />
+                          {isCheckingSlug && (
+                            <Loader2 className="w-4 h-4 animate-spin absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm">
+                        <div className="flex-1">
+                          <p className="text-gray-500">
+                            URL profil Anda: <span className="text-blue-600">/expert/{slug || 'your-slug'}</span>
+                          </p>
+                          {slugAvailable === true && slug !== originalData?.slug && (
+                            <p className="text-green-600 flex items-center gap-1 mt-1">
+                              <CheckCircle className="w-3 h-3" />
+                              Slug tersedia!
+                            </p>
+                          )}
+                          {slugAvailable === false && (
+                            <p className="text-red-600 mt-1">
+                              Slug sudah digunakan atau format tidak valid. Gunakan huruf kecil, angka, dan tanda hubung (-) saja.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <Label htmlFor="company">Perusahaan *</Label>
                     <Input
@@ -770,6 +877,21 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                       placeholder="Ceritakan tentang diri Anda, pengalaman, dan keahlian..."
                       rows={4}
                     />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label htmlFor="program-highlight">Program Highlight</Label>
+                    <Textarea
+                      id="program-highlight"
+                      value={programHighlight}
+                      onChange={(e) => setProgramHighlight(e.target.value)}
+                      placeholder="Tuliskan highlight program Anda untuk menarik calon client..."
+                      rows={5}
+                      maxLength={1000}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {programHighlight.length}/1000 karakter - Deskripsikan program unggulan Anda
+                    </p>
                   </div>
                 </div>
               </Card>

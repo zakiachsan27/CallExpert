@@ -57,12 +57,17 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
 
     try {
       const totalPrice = selectedSessionType.price;
-      
+
       // Format date as YYYY-MM-DD
       const bookingDate = selectedDate.toISOString().split('T')[0];
-      
+
+      // Generate unique order_id
+      const timestamp = new Date().getTime();
+      const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const orderId = `ORDER-${timestamp}-${randomStr}`;
+
       // Create booking in database
-      const bookingId = await createBooking({
+      const { id: bookingId, order_id } = await createBooking({
         user_id: userId,
         expert_id: expert.id,
         session_type_id: selectedSessionType.id,
@@ -71,12 +76,14 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
         topic: topic.trim(),
         notes: topic.trim(),
         total_price: totalPrice,
+        order_id: orderId,
         meeting_link: `https://meet.google.com/${Math.random().toString(36).substring(7)}`
       });
 
       // Create booking object for UI
       const booking: Booking = {
         id: bookingId,
+        orderId: order_id,
         expert,
         sessionType: selectedSessionType,
         date: selectedDate,

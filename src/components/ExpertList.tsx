@@ -441,7 +441,7 @@ export function ExpertList({
               <ExpertCard
                 key={expert.id}
                 expert={expert}
-                onClick={() => onExpertClick(expert.id)}
+                onClick={() => onExpertClick(expert.slug || expert.id)}
               />
             ))}
           </div>
