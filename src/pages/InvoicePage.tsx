@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, Calendar, Clock, User, Briefcase, MapPin, CheckCircle, AlertCircle, CreditCard } from 'lucide-react';
+import { Loader2, Calendar, Clock, User, Briefcase, MapPin, CheckCircle, AlertCircle, CreditCard, MessageCircle } from 'lucide-react';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
-import { getBookingByOrderId } from '../services/database';
+import { getBookingByOrderId, getBookingById } from '../services/database';
 import { createSnapToken } from '../services/midtrans';
 import { useMidtransSnap } from '../hooks/useMidtransSnap';
 
@@ -17,12 +17,25 @@ export function InvoicePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
 
   useEffect(() => {
     if (orderId) {
       fetchBooking();
     }
   }, [orderId]);
+
+  // Auto-trigger payment popup for pending bookings
+  useEffect(() => {
+    if (booking && booking.payment_status === 'waiting' && isSnapLoaded && !isProcessingPayment) {
+      console.log('Auto-triggering payment for new booking');
+      // Small delay to ensure page is fully loaded
+      const timer = setTimeout(() => {
+        handlePayNow();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [booking, isSnapLoaded]);
 
   const fetchBooking = async () => {
     setIsLoading(true);
@@ -34,7 +47,14 @@ export function InvoicePage() {
         return;
       }
 
-      const bookingData = await getBookingByOrderId(orderId);
+      // Try to fetch by order_id first
+      let bookingData = await getBookingByOrderId(orderId);
+
+      // If not found, try by booking ID (UUID format)
+      if (!bookingData && orderId.includes('-')) {
+        console.log('Order ID not found, trying as booking ID:', orderId);
+        bookingData = await getBookingById(orderId);
+      }
 
       if (!bookingData) {
         setError('Invoice tidak ditemukan');
@@ -50,6 +70,49 @@ export function InvoicePage() {
     }
   };
 
+  const pollPaymentStatus = async (maxAttempts = 10, interval = 2000) => {
+    let attempts = 0;
+    setIsCheckingPayment(true);
+
+    const poll = async (): Promise<boolean> => {
+      attempts++;
+      console.log(`Polling payment status, attempt ${attempts}/${maxAttempts}`);
+
+      try {
+        const bookingData = await getBookingByOrderId(orderId!);
+
+        if (bookingData && bookingData.payment_status === 'paid') {
+          console.log('Payment confirmed as paid');
+          setBooking(bookingData);
+          setIsCheckingPayment(false);
+          return true;
+        }
+
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, interval));
+          return poll();
+        }
+
+        console.log('Payment status polling timed out, refreshing anyway');
+        if (bookingData) {
+          setBooking(bookingData);
+        }
+        setIsCheckingPayment(false);
+        return false;
+      } catch (error) {
+        console.error('Error polling payment status:', error);
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, interval));
+          return poll();
+        }
+        setIsCheckingPayment(false);
+        return false;
+      }
+    };
+
+    return poll();
+  };
+
   const handlePayNow = async () => {
     if (!booking) return;
 
@@ -59,17 +122,20 @@ export function InvoicePage() {
 
       // Use openSnap from hook
       openSnap(snapData.token, {
-        onSuccess: (result) => {
+        onSuccess: async (result) => {
           console.log('Payment success:', result);
-          fetchBooking();
+          // Redirect to payment success page for verification
+          navigate(`/payment/success?booking_id=${booking.id}`);
         },
-        onPending: (result) => {
+        onPending: async (result) => {
           console.log('Payment pending:', result);
-          fetchBooking();
+          // Redirect to payment success page for verification
+          navigate(`/payment/success?booking_id=${booking.id}`);
         },
         onError: (result) => {
           console.error('Payment error:', result);
           alert('Pembayaran gagal. Silakan coba lagi.');
+          setIsProcessingPayment(false);
         },
         onClose: () => {
           setIsProcessingPayment(false);
@@ -251,6 +317,21 @@ export function InvoicePage() {
               </div>
             </div>
 
+            {isCheckingPayment && (
+              <>
+                <Separator />
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2 text-blue-800">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <h3 className="font-semibold">Memverifikasi Pembayaran...</h3>
+                  </div>
+                  <p className="text-sm text-blue-700 mt-1">
+                    Mohon tunggu, kami sedang memverifikasi pembayaran Anda.
+                  </p>
+                </div>
+              </>
+            )}
+
             {isPaid && (
               <>
                 <Separator />
@@ -262,17 +343,33 @@ export function InvoicePage() {
                   <p className="text-sm text-green-700">
                     Dibayar pada: {formatDateTime(booking.paid_at || booking.updated_at)}
                   </p>
-                  {booking.meeting_link && (
-                    <div className="mt-3">
-                      <p className="text-sm text-green-700 mb-2">Link Meeting:</p>
+
+                  {/* Meeting Link for Video Call */}
+                  {booking.session_type.category === 'online-video' && booking.meeting_link && (
+                    <div className="mt-4 pt-4 border-t border-green-200">
+                      <p className="text-sm text-green-700 mb-2">Link Video Call:</p>
                       <a
                         href={booking.meeting_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline text-sm"
+                        className="inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                       >
-                        {booking.meeting_link}
+                        Buka Google Meet
                       </a>
+                    </div>
+                  )}
+
+                  {/* Chat Link for Online Chat */}
+                  {booking.session_type.category === 'online-chat' && (
+                    <div className="mt-4 pt-4 border-t border-green-200">
+                      <p className="text-sm text-green-700 mb-2">Akses Chat Konsultasi:</p>
+                      <Button
+                        onClick={() => navigate(`/session?bookingId=${booking.id}`)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Masuk ke Chat
+                      </Button>
                     </div>
                   )}
                 </div>

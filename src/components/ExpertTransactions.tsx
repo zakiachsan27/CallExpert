@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -50,6 +51,8 @@ type ExpertTransactionsProps = {
 };
 
 export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
+  const navigate = useNavigate();
+  const { transactionId } = useParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -70,16 +73,26 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
 
   useEffect(() => {
     fetchTransactions();
-    
+
     // Load saved bank account info from localStorage
     const savedBankName = localStorage.getItem('expert_bank_name');
     const savedAccountNumber = localStorage.getItem('expert_account_number');
     const savedAccountName = localStorage.getItem('expert_account_name');
-    
+
     if (savedBankName) setWithdrawBankName(savedBankName);
     if (savedAccountNumber) setWithdrawAccountNumber(savedAccountNumber);
     if (savedAccountName) setWithdrawAccountName(savedAccountName);
   }, []);
+
+  // Handle transaction ID from URL
+  useEffect(() => {
+    if (transactionId && transactions.length > 0) {
+      const transaction = transactions.find(t => t.id === transactionId);
+      if (transaction) {
+        setSelectedTransaction(transaction);
+      }
+    }
+  }, [transactionId, transactions]);
 
   const fetchTransactions = async () => {
     try {
@@ -101,98 +114,7 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
       
     } catch (err) {
       console.error('Error fetching transactions:', err);
-      
-      // Demo data for development
-      const demoTransactions: Transaction[] = [
-        {
-          id: 'trx-1',
-          userId: 'user-1',
-          userName: 'Budi Santoso',
-          userEmail: 'budi@example.com',
-          userAvatar: 'https://i.pravatar.cc/150?u=budi',
-          type: 'session',
-          itemName: '1-on-1 Career Mentoring',
-          itemCategory: 'online-video',
-          date: '2024-12-20',
-          time: '14:00',
-          topic: 'Career transition to Product Manager',
-          notes: 'Ingin belajar cara menjadi PM yang baik',
-          price: 300000,
-          status: 'confirmed',
-          paymentStatus: 'paid',
-          meetingLink: 'https://zoom.us/j/123456789',
-          createdAt: '2024-12-15T10:00:00Z'
-        },
-        {
-          id: 'trx-2',
-          userId: 'user-2',
-          userName: 'Siti Aminah',
-          userEmail: 'siti@example.com',
-          userAvatar: 'https://i.pravatar.cc/150?u=siti',
-          type: 'session',
-          itemName: 'Quick Chat',
-          itemCategory: 'online-chat',
-          date: '2024-12-18',
-          time: '10:00',
-          topic: 'Resume review',
-          price: 150000,
-          status: 'completed',
-          paymentStatus: 'paid',
-          createdAt: '2024-12-14T08:00:00Z'
-        },
-        {
-          id: 'trx-3',
-          userId: 'user-3',
-          userName: 'Ahmad Rizki',
-          userEmail: 'ahmad@example.com',
-          userAvatar: 'https://i.pravatar.cc/150?u=ahmad',
-          type: 'product',
-          itemName: 'Career Development E-Book',
-          itemCategory: 'ebook',
-          price: 99000,
-          status: 'confirmed',
-          paymentStatus: 'paid',
-          createdAt: '2024-12-16T14:30:00Z'
-        },
-        {
-          id: 'trx-4',
-          userId: 'user-4',
-          userName: 'Dewi Kartika',
-          userEmail: 'dewi@example.com',
-          userAvatar: 'https://i.pravatar.cc/150?u=dewi',
-          type: 'session',
-          itemName: 'Group Workshop',
-          itemCategory: 'online-event',
-          date: '2024-12-25',
-          time: '13:00',
-          topic: 'Product Management Workshop',
-          price: 500000,
-          status: 'pending',
-          paymentStatus: 'waiting',
-          createdAt: '2024-12-17T09:00:00Z'
-        },
-        {
-          id: 'trx-5',
-          userId: 'user-5',
-          userName: 'Andi Wijaya',
-          userEmail: 'andi@example.com',
-          userAvatar: 'https://i.pravatar.cc/150?u=andi',
-          type: 'session',
-          itemName: 'Coffee Chat',
-          itemCategory: 'offline-event',
-          date: '2024-12-22',
-          time: '15:00',
-          topic: 'Networking & Career Advice',
-          notes: 'Meet at Starbucks Central Park',
-          price: 200000,
-          status: 'confirmed',
-          paymentStatus: 'paid',
-          createdAt: '2024-12-16T11:00:00Z'
-        }
-      ];
-      
-      setTransactions(demoTransactions);
-      setError('Demo mode: Menggunakan data transaksi demo');
+      setError('Gagal memuat data transaksi. Silakan refresh halaman.');
     } finally {
       setIsLoading(false);
     }
@@ -203,26 +125,50 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
     if (transaction.type === 'product' && transaction.paymentStatus === 'paid') {
       return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
     }
-    
-    // Jika sudah bayar dan statusnya confirmed, tampilkan "Menunggu Sesi" 
-    if (transaction.status === 'confirmed' && transaction.paymentStatus === 'paid' && transaction.type === 'session') {
-      return <Badge className="bg-blue-100 text-blue-800">Menunggu Sesi</Badge>;
+
+    // Check if session has ended based on date and time
+    if (transaction.type === 'session' && transaction.paymentStatus === 'paid') {
+      const now = new Date();
+      const sessionDate = new Date(transaction.date);
+
+      // Parse time (format: "HH:MM")
+      if (transaction.time) {
+        const [hours, minutes] = transaction.time.split(':').map(Number);
+        sessionDate.setHours(hours, minutes, 0, 0);
+
+        // Get session duration from itemName or default to 60 minutes
+        // Assuming duration is in the session data
+        const sessionEndTime = new Date(sessionDate.getTime() + 60 * 60 * 1000); // Default 1 hour
+
+        // If current time is past session end time, mark as completed
+        if (now > sessionEndTime) {
+          return <Badge className="bg-green-100 text-green-800">Selesai</Badge>;
+        }
+
+        // If current time is past session start time but before end time, mark as ongoing
+        if (now > sessionDate && now < sessionEndTime) {
+          return <Badge className="bg-blue-100 text-blue-800">Sedang Berlangsung</Badge>;
+        }
+      }
+
+      // If session hasn't started yet
+      return <Badge className="bg-yellow-100 text-yellow-800">Menunggu Sesi</Badge>;
     }
-    
+
     const statusConfig = {
       pending: { label: 'Pending', variant: 'secondary' as const, color: 'bg-yellow-100 text-yellow-800' },
       confirmed: { label: 'Confirmed', variant: 'default' as const, color: 'bg-blue-100 text-blue-800' },
       completed: { label: 'Completed', variant: 'default' as const, color: 'bg-green-100 text-green-800' },
       cancelled: { label: 'Cancelled', variant: 'destructive' as const, color: 'bg-red-100 text-red-800' }
     };
-    
+
     const config = statusConfig[transaction.status as keyof typeof statusConfig] || statusConfig.pending;
-    
+
     // Hanya tampilkan badge untuk completed dan cancelled
     if (transaction.status === 'completed' || transaction.status === 'cancelled') {
       return <Badge className={config.color}>{config.label}</Badge>;
     }
-    
+
     return null;
   };
 
@@ -348,9 +294,12 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
   if (selectedTransaction) {
     return (
       <div className="space-y-6">
-        <Button 
-          variant="ghost" 
-          onClick={() => setSelectedTransaction(null)}
+        <Button
+          variant="ghost"
+          onClick={() => {
+            setSelectedTransaction(null);
+            navigate('/expert/dashboard/transaksi');
+          }}
           className="mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -449,6 +398,17 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
                         </a>
                       </div>
                     )}
+                    {selectedTransaction.itemCategory === 'online-chat' && selectedTransaction.paymentStatus === 'paid' && (
+                      <div className="mt-4">
+                        <Button
+                          onClick={() => window.open(`/session?bookingId=${selectedTransaction.id}`, '_blank')}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Masuk ke Chat Konsultasi
+                        </Button>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -544,16 +504,16 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
           </Card>
 
           <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex-1">
                 <p className="text-sm text-gray-600 mb-1">Withdraw</p>
                 <p className="text-2xl font-bold text-purple-600">
                   {formatCurrency(withdrawableAmount)}
                 </p>
               </div>
-              <Button 
-                size="sm" 
-                className="bg-purple-600 hover:bg-purple-700"
+              <Button
+                size="sm"
+                className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto"
                 onClick={(e) => {
                   e.stopPropagation();
                   setWithdrawAmount(withdrawableAmount.toString());
@@ -581,10 +541,13 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
         ) : (
           <div className="space-y-4">
             {transactions.filter(t => t.paymentStatus === 'paid').map((transaction) => (
-              <div 
+              <div
                 key={transaction.id}
                 className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                onClick={() => setSelectedTransaction(transaction)}
+                onClick={() => {
+                  setSelectedTransaction(transaction);
+                  navigate(`/expert/dashboard/transaksi/${transaction.id}`);
+                }}
               >
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   {/* User Info Section */}

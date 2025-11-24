@@ -216,6 +216,18 @@ export async function getExpertBySlug(slug: string): Promise<Expert | null> {
       supabase.from('digital_products').select('*').eq('expert_id', expert.id).eq('is_active', true)
     ]);
 
+    // Debug logging to verify database queries
+    console.log('📊 Database Query Results for expert:', expert.name, {
+      expertId: expert.id,
+      slug: expert.slug,
+      sessionTypesFromDB: sessionTypes.data?.length || 0,
+      sessionTypesData: sessionTypes.data,
+      digitalProductsFromDB: digitalProducts.data?.length || 0,
+      digitalProductsData: digitalProducts.data,
+      sessionTypesError: sessionTypes.error,
+      digitalProductsError: digitalProducts.error
+    });
+
     const expertWithRelations: ExpertWithRelations = {
       ...expert,
       expertise: expertise.data || [],
@@ -702,6 +714,42 @@ export async function getBookingByOrderId(orderId: string): Promise<any | null> 
   }
 }
 
+export async function getBookingById(bookingId: string): Promise<any | null> {
+  try {
+    // Get the booking
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', bookingId)
+      .single();
+
+    if (bookingError) {
+      if (bookingError.code === 'PGRST116') return null; // Not found
+      throw bookingError;
+    }
+
+    if (!booking) return null;
+
+    // Fetch related data separately to avoid RLS issues
+    const [expertData, sessionTypeData, userData] = await Promise.all([
+      supabase.from('experts').select('*').eq('id', booking.expert_id).single(),
+      supabase.from('session_types').select('*').eq('id', booking.session_type_id).single(),
+      booking.user_id ? supabase.from('users').select('*').eq('id', booking.user_id).single() : Promise.resolve({ data: null, error: null })
+    ]);
+
+    // Combine the data
+    return {
+      ...booking,
+      expert: expertData.data,
+      session_type: sessionTypeData.data,
+      user: userData.data
+    };
+  } catch (error) {
+    console.error('Error fetching booking by id:', error);
+    throw error;
+  }
+}
+
 // =============================================
 // USER OPERATIONS
 // =============================================
@@ -737,5 +785,267 @@ export async function getUserById(userId: string): Promise<any | null> {
     console.error('Error fetching user:', error);
     return null;
   }
+}
+
+// =============================================
+// CHAT OPERATIONS
+// =============================================
+
+export interface ChatMessage {
+  id: string;
+  booking_id: string;
+  sender_id: string;
+  sender_type: 'user' | 'expert';
+  message_text: string;
+  is_edited: boolean;
+  edited_at?: string;
+  created_at: string;
+}
+
+export interface ActiveSession {
+  id: string;
+  booking_id: string;
+  user_joined_at?: string;
+  expert_joined_at?: string;
+  ended_at?: string;
+  ended_by?: 'user' | 'expert' | 'timeout';
+  status: 'waiting_expert' | 'active' | 'ended';
+  created_at: string;
+  updated_at: string;
+}
+
+export async function sendMessage(
+  bookingId: string,
+  senderId: string,
+  senderType: 'user' | 'expert',
+  messageText: string
+): Promise<ChatMessage> {
+  try {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert({
+        booking_id: bookingId,
+        sender_id: senderId,
+        sender_type: senderType,
+        message_text: messageText
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.message?.includes('not found') || error.code === 'PGRST116') {
+        throw new Error('Chat table does not exist. Please ensure database migrations have been applied.');
+      }
+      throw error;
+    }
+    return data as ChatMessage;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw error;
+  }
+}
+
+export async function getSessionMessages(bookingId: string): Promise<ChatMessage[]> {
+  try {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('booking_id', bookingId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      // If table doesn't exist (404 or not found), return empty array
+      if (error.code === 'PGRST116' || error.message?.includes('not found')) {
+        console.warn('Chat messages table may not exist yet:', error.message);
+        return [];
+      }
+      throw error;
+    }
+    return (data as ChatMessage[]) || [];
+  } catch (error) {
+    console.error('Error fetching session messages:', error);
+    // Return empty array instead of throwing to allow UI to work
+    return [];
+  }
+}
+
+export async function getActiveSession(bookingId: string): Promise<ActiveSession | null> {
+  try {
+    const { data, error } = await supabase
+      .from('active_sessions')
+      .select('*')
+      .eq('booking_id', bookingId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null; // Not found
+      if (error.message?.includes('not found')) return null;
+      throw error;
+    }
+
+    return data as ActiveSession;
+  } catch (error) {
+    console.warn('Error fetching active session:', error);
+    return null;
+  }
+}
+
+export async function startSession(bookingId: string, byType: 'user' | 'expert'): Promise<ActiveSession> {
+  try {
+    // First, try to get existing session
+    let existingSession = null;
+    try {
+      existingSession = await getActiveSession(bookingId);
+    } catch (err) {
+      console.warn('Could not fetch existing session:', err);
+    }
+
+    if (existingSession) {
+      // Update the session with participant join time
+      const updateData: any = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (byType === 'user') {
+        updateData.user_joined_at = new Date().toISOString();
+      } else {
+        updateData.expert_joined_at = new Date().toISOString();
+      }
+
+      // Change status to active if both have joined
+      if (
+        (byType === 'user' && existingSession.expert_joined_at) ||
+        (byType === 'expert' && existingSession.user_joined_at)
+      ) {
+        updateData.status = 'active';
+      }
+
+      const { data, error } = await supabase
+        .from('active_sessions')
+        .update(updateData)
+        .eq('booking_id', bookingId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating session:', error);
+        throw error;
+      }
+      return data as ActiveSession;
+    } else {
+      // Create new session
+      const joinData: any = {
+        booking_id: bookingId,
+        status: byType === 'user' ? 'waiting_expert' : 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      if (byType === 'user') {
+        joinData.user_joined_at = new Date().toISOString();
+      } else {
+        joinData.expert_joined_at = new Date().toISOString();
+      }
+
+      const { data, error } = await supabase
+        .from('active_sessions')
+        .insert(joinData)
+        .select()
+        .single();
+
+      if (error) {
+        // If UNIQUE constraint error, try to fetch and update instead
+        if (error.code === '23505' || error.message?.includes('duplicate')) {
+          console.warn('Session already exists, trying to fetch and update...');
+          const existing = await getActiveSession(bookingId);
+          if (existing) {
+            return await startSession(bookingId, byType);
+          }
+        }
+        console.error('Error creating session:', error);
+        throw error;
+      }
+      return data as ActiveSession;
+    }
+  } catch (error) {
+    console.error('Error starting session:', error);
+    throw error;
+  }
+}
+
+export async function endSession(bookingId: string, endedBy: 'user' | 'expert' | 'timeout'): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('active_sessions')
+      .update({
+        status: 'ended',
+        ended_at: new Date().toISOString(),
+        ended_by: endedBy
+      })
+      .eq('booking_id', bookingId);
+
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error ending session:', error);
+    throw error;
+  }
+}
+
+export function subscribeToMessages(
+  bookingId: string,
+  onNewMessage: (message: ChatMessage) => void
+): ReturnType<typeof supabase.channel> {
+  const channel = supabase
+    .channel(`chat-${bookingId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `booking_id=eq.${bookingId}`
+      },
+      (payload) => {
+        console.log('📨 New message received via realtime:', payload.new);
+        onNewMessage(payload.new as ChatMessage);
+      }
+    )
+    .subscribe((status) => {
+      console.log('💬 Chat subscription status:', status);
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Successfully subscribed to chat messages for booking:', bookingId);
+      }
+    });
+
+  return channel;
+}
+
+export function subscribeToSessionStatus(
+  bookingId: string,
+  onStatusChange: (session: ActiveSession) => void
+): ReturnType<typeof supabase.channel> {
+  const channel = supabase
+    .channel(`session-${bookingId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'active_sessions',
+        filter: `booking_id=eq.${bookingId}`
+      },
+      (payload) => {
+        console.log('🔄 Session status changed via realtime:', payload.new);
+        onStatusChange(payload.new as ActiveSession);
+      }
+    )
+    .subscribe((status) => {
+      console.log('📡 Session subscription status:', status);
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Successfully subscribed to session status for booking:', bookingId);
+      }
+    });
+
+  return channel;
 }
 

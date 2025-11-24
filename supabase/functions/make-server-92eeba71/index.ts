@@ -249,14 +249,21 @@ app.get("/make-server-92eeba71/expert/profile", async (c) => {
       skillsResult,
       achievementsResult,
       educationResult,
-      workExpResult
+      workExpResult,
+      sessionTypesResult,
+      digitalProductsResult
     ] = await Promise.all([
       supabase.from('expert_expertise').select('*').eq('expert_id', expertId),
       supabase.from('expert_skills').select('*').eq('expert_id', expertId),
       supabase.from('expert_achievements').select('*').eq('expert_id', expertId),
       supabase.from('expert_education').select('*').eq('expert_id', expertId),
-      supabase.from('expert_work_experience').select('*').eq('expert_id', expertId)
+      supabase.from('expert_work_experience').select('*').eq('expert_id', expertId),
+      supabase.from('session_types').select('*').eq('expert_id', expertId).eq('is_active', true),
+      supabase.from('digital_products').select('*').eq('expert_id', expertId).eq('is_active', true)
     ]);
+
+    console.log('📊 Fetched session types:', sessionTypesResult.data?.length || 0);
+    console.log('📊 Fetched digital products:', digitalProductsResult.data?.length || 0);
 
     // Map database columns to API response format
     const expertData = {
@@ -280,7 +287,14 @@ app.get("/make-server-92eeba71/expert/profile", async (c) => {
         address: dbData.location_address || ''
       },
       availability: dbData.availability || 'offline',
-      sessionTypes: [],
+      sessionTypes: sessionTypesResult.data?.map(st => ({
+        id: st.id,
+        name: st.name,
+        duration: st.duration,
+        price: st.price,
+        category: st.category,
+        description: st.description || ''
+      })) || [],
       workExperience: workExpResult.data?.map(we => ({
         title: we.title,
         company: we.company,
@@ -289,7 +303,15 @@ app.get("/make-server-92eeba71/expert/profile", async (c) => {
       })) || [],
       education: educationResult.data?.map(e => e.description) || [],
       achievements: achievementsResult.data?.map(a => a.description) || [],
-      digitalProducts: [],
+      digitalProducts: digitalProductsResult.data?.map(dp => ({
+        id: dp.id,
+        name: dp.name,
+        description: dp.description || '',
+        price: dp.price,
+        type: dp.type,
+        downloadLink: dp.download_link,
+        thumbnail: dp.thumbnail_url
+      })) || [],
       availableDays: [],
       availableHours: { start: '09:00', end: '17:00' }
     };
@@ -494,7 +516,7 @@ app.put("/make-server-92eeba71/expert/profile", async (c) => {
           const { error: insertError } = await supabase
             .from('expert_work_experience')
             .insert(workExpData);
-          
+
           if (insertError) {
             console.error('Error inserting work experience:', insertError);
           }
@@ -504,7 +526,82 @@ app.put("/make-server-92eeba71/expert/profile", async (c) => {
       }
     }
 
-    // 7. Also update KV for fast access (backward compatibility)
+    // 7. Save session types to public.session_types
+    if (updates.sessionTypes && Array.isArray(updates.sessionTypes)) {
+      try {
+        console.log('Saving session types:', updates.sessionTypes);
+
+        // Delete old session types first
+        await supabase
+          .from('session_types')
+          .delete()
+          .eq('expert_id', expertId);
+
+        // Insert new session types
+        if (updates.sessionTypes.length > 0) {
+          const sessionTypesData = updates.sessionTypes.map((item: any) => ({
+            expert_id: expertId,
+            name: item.name || '',
+            duration: item.duration || 0,
+            price: item.price || 0,
+            category: item.category || 'online-video',
+            description: item.description || '',
+            is_active: true
+          }));
+          const { error: insertError } = await supabase
+            .from('session_types')
+            .insert(sessionTypesData);
+
+          if (insertError) {
+            console.error('Error inserting session types:', insertError);
+          } else {
+            console.log('Successfully saved session types:', sessionTypesData.length);
+          }
+        }
+      } catch (err) {
+        console.error('Error updating session types:', err);
+      }
+    }
+
+    // 8. Save digital products to public.digital_products
+    if (updates.digitalProducts && Array.isArray(updates.digitalProducts)) {
+      try {
+        console.log('Saving digital products:', updates.digitalProducts);
+
+        // Delete old digital products first
+        await supabase
+          .from('digital_products')
+          .delete()
+          .eq('expert_id', expertId);
+
+        // Insert new digital products
+        if (updates.digitalProducts.length > 0) {
+          const digitalProductsData = updates.digitalProducts.map((item: any) => ({
+            expert_id: expertId,
+            name: item.name || '',
+            description: item.description || '',
+            price: item.price || 0,
+            type: item.type || 'ebook',
+            download_link: item.downloadLink || null,
+            thumbnail_url: item.thumbnail || null,
+            is_active: true
+          }));
+          const { error: insertError } = await supabase
+            .from('digital_products')
+            .insert(digitalProductsData);
+
+          if (insertError) {
+            console.error('Error inserting digital products:', insertError);
+          } else {
+            console.log('Successfully saved digital products:', digitalProductsData.length);
+          }
+        }
+      } catch (err) {
+        console.error('Error updating digital products:', err);
+      }
+    }
+
+    // 9. Also update KV for fast access (backward compatibility)
     const currentData = await kv.get(`expert:${user.id}`);
     const updatedData = {
       ...currentData,
@@ -516,12 +613,12 @@ app.put("/make-server-92eeba71/expert/profile", async (c) => {
     };
     await kv.set(`expert:${user.id}`, updatedData);
 
-    return c.json({ 
-      expert: updatedData, 
+    return c.json({
+      expert: updatedData,
       expertId: expertId,
       userId: user.id,
       message: 'Profile saved successfully to database',
-      saved_tables: ['experts', 'expert_expertise', 'expert_skills', 'expert_education', 'expert_achievements', 'expert_work_experience']
+      saved_tables: ['experts', 'expert_expertise', 'expert_skills', 'expert_education', 'expert_achievements', 'expert_work_experience', 'session_types', 'digital_products']
     });
   } catch (error) {
     console.error('Update expert profile error:', error);
@@ -650,15 +747,76 @@ app.post("/make-server-92eeba71/bookings", async (c) => {
 app.get("/make-server-92eeba71/expert/transactions", async (c) => {
   try {
     const { error, user } = await verifyAuth(c.req.header('Authorization'));
-    
+
     if (error || !user) {
       return c.json({ error: error || 'Unauthorized' }, 401);
     }
 
-    // Get all transactions for this expert
-    const transactions = await kv.getByPrefix(`transaction:expert:${user.id}:`);
+    // Get expert data from KV store
+    const expertData = await kv.get(`expert:${user.id}`);
 
-    return c.json({ transactions: transactions || [] });
+    if (!expertData || !expertData.id) {
+      console.error('Expert data not found in KV for user:', user.id);
+      return c.json({ error: 'Expert profile not found' }, 404);
+    }
+
+    const expertId = expertData.id;
+    console.log('Fetching transactions for expert:', expertId);
+
+    // Get all bookings for this expert
+    const supabase = getServiceClient();
+    const { data: bookings, error: bookingsError } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('expert_id', expertId)
+      .order('created_at', { ascending: false });
+
+    if (bookingsError) {
+      console.error('Error fetching bookings:', bookingsError);
+      return c.json({ error: 'Failed to fetch transactions', details: bookingsError.message }, 500);
+    }
+
+    console.log(`Found ${bookings?.length || 0} bookings`);
+
+    // For each booking, fetch related data
+    const transactions = await Promise.all((bookings || []).map(async (booking) => {
+      // Get user data
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id, email, name')
+        .eq('id', booking.user_id)
+        .single();
+
+      // Get session type data
+      const { data: sessionType } = await supabase
+        .from('session_types')
+        .select('id, name, duration, price, category')
+        .eq('id', booking.session_type_id)
+        .single();
+
+      return {
+        id: booking.id,
+        userId: booking.user_id,
+        userName: userData?.name || 'Unknown',
+        userEmail: userData?.email || '',
+        userAvatar: null,
+        type: 'session' as const,
+        itemName: sessionType?.name || 'Unknown Session',
+        itemCategory: sessionType?.category,
+        date: booking.booking_date,
+        time: booking.booking_time,
+        topic: booking.topic,
+        notes: booking.notes,
+        price: sessionType?.price || booking.total_price || 0,
+        status: booking.status,
+        paymentStatus: booking.payment_status,
+        meetingLink: booking.meeting_link,
+        createdAt: booking.created_at
+      };
+    }));
+
+    console.log(`Returning ${transactions.length} transactions`);
+    return c.json({ transactions });
   } catch (error) {
     console.error('Get expert transactions error:', error);
     return c.json({ error: 'Internal server error while fetching transactions' }, 500);

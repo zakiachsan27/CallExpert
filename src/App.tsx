@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ChatProvider } from './contexts/ChatContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
@@ -10,6 +11,8 @@ import { BookingPage } from './pages/BookingPage';
 import { UserTransactionsPage } from './pages/UserTransactionsPage';
 import { ExpertDashboardPage } from './pages/ExpertDashboardPage';
 import { InvoicePage } from './pages/InvoicePage';
+import { SessionPage } from './pages/SessionPage';
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 // Log environment info for debugging
@@ -86,46 +89,83 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/expert/login" element={<ExpertLoginPage />} />
-          <Route path="/expert/:slug" element={<ExpertDetailPage />} />
-          <Route path="/invoice/:orderId" element={<InvoicePage />} />
+        <ChatProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/expert/login" element={<ExpertLoginPage />} />
+            <Route path="/expert/:slug" element={<ExpertDetailPage />} />
+            <Route path="/invoice/:orderId" element={<InvoicePage />} />
+            <Route path="/payment/success" element={<PaymentSuccessPage />} />
 
-          {/* Protected User Routes */}
-          <Route
-            path="/expert/:slug/booking"
-            element={
-              <ProtectedRoute requireUser>
-                <BookingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route 
-            path="/user/transactions" 
-            element={
-              <ProtectedRoute requireUser>
-                <UserTransactionsPage />
-              </ProtectedRoute>
-            } 
-          />
+            {/* Protected User Routes */}
+            <Route
+              path="/expert/:slug/booking"
+              element={
+                <ProtectedRoute requireUser>
+                  <BookingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/user/transactions" 
+              element={
+                <ProtectedRoute requireUser>
+                  <UserTransactionsPage />
+                </ProtectedRoute>
+              } 
+            />
 
-          {/* Protected Expert Routes */}
-          <Route 
-            path="/expert/dashboard" 
-            element={
-              <ProtectedRoute requireExpert>
-                <ExpertDashboardPage />
-              </ProtectedRoute>
-            } 
-          />
+            {/* Protected Session Route (Chat) */}
+            <Route 
+              path="/session" 
+              element={
+                <ProtectedRoute>
+                  <SessionPage />
+                </ProtectedRoute>
+              } 
+            />
 
-          {/* 404 Not Found */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+            {/* Protected Expert Routes */}
+            <Route
+              path="/expert/dashboard"
+              element={
+                <ProtectedRoute requireExpert>
+                  <ExpertDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/expert/dashboard/layanan"
+              element={
+                <ProtectedRoute requireExpert>
+                  <ExpertDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/expert/dashboard/transaksi"
+              element={
+                <ProtectedRoute requireExpert>
+                  <ExpertDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/expert/dashboard/transaksi/:transactionId"
+              element={
+                <ProtectedRoute requireExpert>
+                  <ExpertDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* 404 Not Found */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </ChatProvider>
       </AuthProvider>
     </BrowserRouter>
   );

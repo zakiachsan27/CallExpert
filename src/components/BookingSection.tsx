@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar, Clock, Loader2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Calendar as CalendarComponent } from './ui/calendar';
@@ -21,6 +21,13 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
   const [topic, setTopic] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Clear error when userId becomes available
+  useEffect(() => {
+    if (userId && error === 'Anda harus login terlebih dahulu') {
+      setError('');
+    }
+  }, [userId, error]);
 
   // Generate available time slots (simplified - all weekdays 9-17)
   const getAvailableSlots = () => {
@@ -47,8 +54,25 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
   };
 
   const handleBooking = async () => {
-    if (!selectedDate || !selectedTime || !topic.trim() || !userId) {
-      setError('Mohon lengkapi semua data booking');
+    // Validate user is logged in
+    if (!userId) {
+      setError('Anda harus login terlebih dahulu');
+      return;
+    }
+
+    // Validate form fields
+    if (!selectedDate) {
+      setError('Mohon pilih tanggal booking');
+      return;
+    }
+
+    if (!selectedTime) {
+      setError('Mohon pilih waktu booking');
+      return;
+    }
+
+    if (!topic.trim()) {
+      setError('Mohon isi topik diskusi');
       return;
     }
 
@@ -77,7 +101,9 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
         notes: topic.trim(),
         total_price: totalPrice,
         order_id: orderId,
-        meeting_link: `https://meet.google.com/${Math.random().toString(36).substring(7)}`
+        meeting_link: selectedSessionType.category === 'online-video' 
+          ? `https://meet.google.com/${Math.random().toString(36).substring(7)}`
+          : null
       });
 
       // Create booking object for UI
@@ -136,7 +162,27 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
 
         {/* Time Slots */}
         <div>
-          <Label className="mb-3 block">Pilih Waktu</Label>
+          <div className="flex items-center justify-between mb-3">
+            <Label>Pilih Waktu</Label>
+            {/* Button "Sekarang" for chat sessions */}
+            {selectedSessionType.category === 'online-chat' && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const now = new Date();
+                  setSelectedDate(now);
+                  const hours = now.getHours().toString().padStart(2, '0');
+                  const minutes = now.getMinutes().toString().padStart(2, '0');
+                  setSelectedTime(`${hours}:${minutes}`);
+                }}
+                className="text-xs"
+              >
+                <Clock className="w-3 h-3 mr-1" />
+                Sekarang
+              </Button>
+            )}
+          </div>
           {selectedDate ? (
             <>
               {availableSlots.length > 0 ? (
@@ -151,6 +197,16 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
                       {slot}
                     </Button>
                   ))}
+                  {/* Show current time if "Sekarang" was clicked */}
+                  {selectedTime && !availableSlots.includes(selectedTime) && (
+                    <Button
+                      variant="default"
+                      className="w-full col-span-2"
+                      disabled
+                    >
+                      {selectedTime} (Sekarang)
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="border rounded-lg p-4 text-center">

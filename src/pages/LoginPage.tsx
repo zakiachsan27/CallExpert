@@ -23,29 +23,12 @@ export function LoginPage() {
   // Return URL for redirect after login
   const returnUrl = (location.state as any)?.from || '/';
 
-  // Demo credentials helper
-  const fillDemoCredentials = () => {
-    setEmail('user@demo.com');
-    setPassword('demo123');
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
     try {
-      // Check for demo credentials
-      const isDemoUser = email === 'user@demo.com' && password === 'demo123';
-
-      if (isDemoUser) {
-        // Demo User login
-        const demoToken = 'demo-user-token';
-        loginAsUser(demoToken);
-        navigate(returnUrl, { replace: true });
-        return;
-      }
-
       // Real authentication with Supabase
       const supabase = createClient(
         `https://${projectId}.supabase.co`,
@@ -108,24 +91,6 @@ export function LoginPage() {
           <h1 className="text-center text-2xl font-bold mb-2">Login ke SobatKarir</h1>
           <p className="text-center text-gray-600">
             Masuk untuk melanjutkan
-          </p>
-        </div>
-
-        {/* Demo Mode Notice */}
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <p className="text-sm text-blue-800 mb-2">
-            <strong>Demo Mode:</strong> Gunakan kredensial demo untuk testing
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fillDemoCredentials}
-            className="w-full"
-          >
-            Isi Kredensial Demo
-          </Button>
-          <p className="text-xs text-blue-600 mt-2">
-            user@demo.com / demo123
           </p>
         </div>
 

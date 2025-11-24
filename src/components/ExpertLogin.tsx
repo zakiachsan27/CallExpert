@@ -12,9 +12,6 @@ type ExpertLoginProps = {
   onBack: () => void;
 };
 
-// Demo mode disabled - using real Supabase auth
-const DEMO_MODE = false;
-
 export function ExpertLogin({ onLoginSuccess, onBack }: ExpertLoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

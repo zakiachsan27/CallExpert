@@ -12,9 +12,6 @@ type UserLoginProps = {
   onBack: () => void;
 };
 
-// Demo mode disabled - using real Supabase auth
-const DEMO_MODE = false;
-
 export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');

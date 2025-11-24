@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Users, ChevronDown, User, Award, Receipt, LogOut, LayoutDashboard, Loader2, RefreshCw } from 'lucide-react';
+import { Search, Filter } from 'lucide-react';
 import { ExpertCard } from './ExpertCard';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
@@ -11,26 +11,10 @@ import { getExperts } from '../services/database';
 
 type ExpertListProps = {
   onExpertClick: (expertId: string) => void;
-  onLoginAsUser?: () => void;
-  onLoginAsExpert?: () => void;
-  userAccessToken?: string | null;
-  expertAccessToken?: string | null;
-  onUserHistory?: () => void;
-  onExpertDashboard?: () => void;
-  onUserLogout?: () => void;
-  onExpertLogout?: () => void;
 };
 
 export function ExpertList({ 
-  onExpertClick, 
-  onLoginAsUser, 
-  onLoginAsExpert,
-  userAccessToken,
-  expertAccessToken,
-  onUserHistory,
-  onExpertDashboard,
-  onUserLogout,
-  onExpertLogout
+  onExpertClick
 }: ExpertListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExpertise, setSelectedExpertise] = useState<string[]>([]);
@@ -40,7 +24,6 @@ export function ExpertList({
   const [experts, setExperts] = useState<Expert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch experts from database
   useEffect(() => {
@@ -58,13 +41,7 @@ export function ExpertList({
       setError('Gagal memuat daftar expert. Silakan refresh halaman.');
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
     }
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchExperts();
   };
 
   // Get all unique expertise
@@ -152,100 +129,7 @@ export function ExpertList({
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-                className="gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Refresh</span>
-              </Button>
-
-              <div className="flex items-center gap-2 text-gray-600 text-sm">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{filteredExperts.length} experts</span>
-              </div>
-              
-              {/* If user logged in */}
-              {userAccessToken && (
-                <>
-                  {onUserHistory && (
-                    <Button variant="outline" size="sm" onClick={onUserHistory} className="gap-2">
-                      <Receipt className="w-4 h-4" />
-                      <span className="hidden sm:inline">Riwayat</span>
-                    </Button>
-                  )}
-                  {onUserLogout && (
-                    <Button variant="outline" size="sm" onClick={onUserLogout} className="gap-2">
-                      <LogOut className="w-4 h-4" />
-                      <span className="hidden sm:inline">Logout</span>
-                    </Button>
-                  )}
-                </>
-              )}
-              
-              {/* If expert logged in */}
-              {expertAccessToken && (
-                <>
-                  {/* Expert sudah login, tidak perlu tampilkan button Dashboard dan Logout di homepage */}
-                </>
-              )}
-              
-              {/* If not logged in */}
-              {!userAccessToken && !expertAccessToken && (
-                <>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button size="sm" className="gap-2">
-                        <User className="w-4 h-4" />
-                        Login
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Pilih Tipe Login</DialogTitle>
-                        <DialogDescription>
-                          Silakan pilih apakah Anda ingin login sebagai User atau Expert
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-3 pt-4">
-                        {onLoginAsUser && (
-                          <Button 
-                            variant="outline" 
-                            className="w-full justify-start gap-3 h-auto py-4"
-                            onClick={onLoginAsUser}
-                          >
-                            <User className="w-5 h-5" />
-                            <div className="text-left">
-                              <div>Login sebagai User</div>
-                              <div className="text-sm text-muted-foreground">
-                                Untuk booking sesi dengan expert
-                              </div>
-                            </div>
-                          </Button>
-                        )}
-                        {onLoginAsExpert && (
-                          <Button 
-                            variant="outline" 
-                            className="w-full justify-start gap-3 h-auto py-4"
-                            onClick={onLoginAsExpert}
-                          >
-                            <Award className="w-5 h-5" />
-                            <div className="text-left">
-                              <div>Login sebagai Expert</div>
-                              <div className="text-sm text-muted-foreground">
-                                Kelola profil dan layanan Anda
-                              </div>
-                            </div>
-                          </Button>
-                        )}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </>
-              )}
+              {/* Removed: Refresh button, experts count, and Login button */}
             </div>
           </div>
 
@@ -428,7 +312,6 @@ export function ExpertList({
           </div>
         ) : error ? (
           <div className="text-center py-16">
-            <Users className="w-16 h-16 text-red-300 mx-auto mb-4" />
             <h3 className="text-red-600 mb-2">Error</h3>
             <p className="text-gray-600 mb-4">{error}</p>
             <Button onClick={fetchExperts}>
@@ -447,7 +330,6 @@ export function ExpertList({
           </div>
         ) : (
           <div className="text-center py-16">
-            <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-gray-500 mb-2">Tidak ada expert ditemukan</h3>
             <p className="text-gray-400 mb-4">
               Coba ubah filter atau kata kunci pencarian
