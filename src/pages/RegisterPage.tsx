@@ -88,8 +88,8 @@ export function RegisterPage() {
         return;
       }
 
-      // Save token
-      loginAsUser(loginData.session.access_token);
+      // Save token and userId
+      await loginAsUser(loginData.session.access_token, loginData.user.id);
       navigate('/', { replace: true });
       
     } catch (err: any) {
@@ -116,10 +116,10 @@ export function RegisterPage() {
 
           <div className="flex items-center justify-center gap-3 mb-2">
             <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">SK</span>
+              <span className="text-white font-bold text-xl">MA</span>
             </div>
           </div>
-          <h1 className="text-center text-2xl font-bold mb-2">Daftar SobatKarir</h1>
+          <h1 className="text-center text-2xl font-bold mb-2">Daftar MentorinAja</h1>
           <p className="text-center text-gray-600">
             Buat akun untuk melanjutkan
           </p>

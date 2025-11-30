@@ -756,14 +756,28 @@ export async function getBookingById(bookingId: string): Promise<any | null> {
 
 export async function createUser(data: { id: string; email: string; name: string }): Promise<void> {
   try {
-    const { error } = await supabase
-      .from('users')
-      .insert(data);
+    // Check if user already exists
+    const existingUser = await getUserById(data.id);
 
-    if (error) throw error;
+    // Only create if user doesn't exist
+    if (!existingUser) {
+      const { error } = await supabase
+        .from('users')
+        .insert(data);
+
+      if (error) {
+        // Ignore duplicate key errors (user was created by another process)
+        if (error.code !== '23505') {
+          throw error;
+        }
+      }
+    }
   } catch (error) {
     console.error('Error creating user:', error);
-    throw error;
+    // Don't throw error if it's just a duplicate key issue
+    if ((error as any).code !== '23505') {
+      throw error;
+    }
   }
 }
 
@@ -1049,3 +1063,85 @@ export function subscribeToSessionStatus(
   return channel;
 }
 
+// =============================================
+// MEETING LINK POOL OPERATIONS
+// =============================================
+
+/**
+ * Get an available meeting link from the pool that doesn't conflict with existing bookings
+ * @param bookingDate - Date of the booking in YYYY-MM-DD format
+ * @param bookingTime - Time of the booking in HH:MM format
+ * @param duration - Duration of the session in minutes
+ * @returns Available meeting link or null if none available
+ */
+export async function getAvailableMeetingLink(
+  bookingDate: string,
+  bookingTime: string,
+  duration: number
+): Promise<string | null> {
+  try {
+    // Get all meeting links from pool
+    const { data: meetingLinks, error: poolError } = await supabase
+      .from('meeting_links_pool')
+      .select('meeting_link');
+
+    if (poolError) throw poolError;
+    if (!meetingLinks || meetingLinks.length === 0) {
+      console.warn('No meeting links available in pool');
+      return null;
+    }
+
+    // Get all bookings on the same date with meeting links
+    const { data: existingBookings, error: bookingsError } = await supabase
+      .from('bookings')
+      .select('booking_time, meeting_link, session_type_id, session_types!inner(duration)')
+      .eq('booking_date', bookingDate)
+      .not('meeting_link', 'is', null);
+
+    if (bookingsError) throw bookingsError;
+
+    // Convert booking time to minutes for easier comparison
+    const [hours, minutes] = bookingTime.split(':').map(Number);
+    const startTime = hours * 60 + minutes;
+    const endTime = startTime + duration;
+
+    // Find a link that doesn't have time conflicts
+    for (const linkData of meetingLinks) {
+      const link = linkData.meeting_link;
+      let hasConflict = false;
+
+      // Check if this link is used in any conflicting time slot
+      if (existingBookings) {
+        for (const booking of existingBookings) {
+          if (booking.meeting_link === link) {
+            const [bHours, bMinutes] = booking.booking_time.split(':').map(Number);
+            const bStartTime = bHours * 60 + bMinutes;
+            const bEndTime = bStartTime + (booking.session_types?.duration || 60);
+
+            // Check for time overlap
+            if (
+              (startTime >= bStartTime && startTime < bEndTime) ||
+              (endTime > bStartTime && endTime <= bEndTime) ||
+              (startTime <= bStartTime && endTime >= bEndTime)
+            ) {
+              hasConflict = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // Return the first available link without conflicts
+      if (!hasConflict) {
+        return link;
+      }
+    }
+
+    // No available link found
+    console.warn('All meeting links are occupied for this time slot');
+    return null;
+  } catch (error) {
+    console.error('Error getting available meeting link:', error);
+    return null;
+  }
+}

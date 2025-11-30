@@ -52,11 +52,11 @@ export function LoginPage() {
       const userRole = data.user.user_metadata?.role;
 
       if (userRole !== 'user') {
-        throw new Error('Email ini tidak terdaftar sebagai User. Silakan login sebagai Expert.');
+        throw new Error('Email ini tidak terdaftar sebagai User. Silakan login sebagai Mentor.');
       }
 
-      // Save token
-      loginAsUser(data.session.access_token);
+      // Save token and userId
+      await loginAsUser(data.session.access_token, data.user.id);
 
       // Redirect to return URL or default
       navigate(returnUrl, { replace: true });
@@ -85,10 +85,10 @@ export function LoginPage() {
 
           <div className="flex items-center justify-center gap-3 mb-2">
             <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">SK</span>
+              <span className="text-white font-bold text-xl">MA</span>
             </div>
           </div>
-          <h1 className="text-center text-2xl font-bold mb-2">Login ke SobatKarir</h1>
+          <h1 className="text-center text-2xl font-bold mb-2">Login ke MentorinAja</h1>
           <p className="text-center text-gray-600">
             Masuk untuk melanjutkan
           </p>
@@ -172,12 +172,12 @@ export function LoginPage() {
         {/* Link ke Expert Login */}
         <div className="mt-4 text-center pt-4 border-t">
           <p className="text-sm text-gray-600">
-            Anda seorang Expert?{' '}
+            Anda seorang Mentor?{' '}
             <button
               onClick={() => navigate('/expert/login')}
               className="text-purple-600 hover:underline font-medium"
             >
-              Login sebagai Expert
+              Login sebagai Mentor
             </button>
           </p>
         </div>

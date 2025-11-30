@@ -97,7 +97,7 @@ export function ExpertCard({ expert, onClick }: ExpertCardProps) {
             <Badge variant="outline" className="text-xs">💬 Chat</Badge>
           )}
           {expert.sessionTypes.some(s => s.category === 'online-video') && (
-            <Badge variant="outline" className="text-xs">📹 Video</Badge>
+            <Badge variant="outline" className="text-xs">📹 Google Meet</Badge>
           )}
           {expert.sessionTypes.some(s => s.category === 'online-event') && (
             <Badge variant="outline" className="text-xs">🎯 Event</Badge>

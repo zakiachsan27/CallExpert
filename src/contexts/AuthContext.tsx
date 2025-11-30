@@ -73,16 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserId(authUserId);
       localStorage.setItem('user_access_token', token);
       localStorage.setItem('user_id', authUserId);
-
-      // Ensure user exists in users table
-      const { data: { user } } = await supabase.auth.getUser(token);
-      if (user) {
-        await createUser({
-          id: user.id,
-          email: user.email || '',
-          name: user.user_metadata?.name || user.email?.split('@')[0] || 'User'
-        });
-      }
     } catch (error) {
       console.error('Error in loginAsUser:', error);
       throw error;

@@ -352,7 +352,7 @@ export function InvoicePage() {
                         href={booking.meeting_link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-block bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                        className="inline-block border-2 border-green-600 hover:bg-green-50 text-green-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                       >
                         Buka Google Meet
                       </a>

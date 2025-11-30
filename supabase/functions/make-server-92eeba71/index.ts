@@ -788,20 +788,26 @@ app.get("/make-server-92eeba71/expert/transactions", async (c) => {
         .single();
 
       // Get session type data
-      const { data: sessionType } = await supabase
+      const { data: sessionType, error: sessionTypeError } = await supabase
         .from('session_types')
         .select('id, name, duration, price, category')
         .eq('id', booking.session_type_id)
         .single();
 
+      // Log if session type not found
+      if (!sessionType) {
+        console.log(`Session type not found for booking ${booking.id}, session_type_id: ${booking.session_type_id}`);
+      }
+
       return {
         id: booking.id,
+        orderId: booking.order_id,
         userId: booking.user_id,
         userName: userData?.name || 'Unknown',
         userEmail: userData?.email || '',
         userAvatar: null,
         type: 'session' as const,
-        itemName: sessionType?.name || 'Unknown Session',
+        itemName: sessionType?.name || '',
         itemCategory: sessionType?.category,
         date: booking.booking_date,
         time: booking.booking_time,

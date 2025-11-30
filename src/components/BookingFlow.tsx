@@ -39,7 +39,7 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
       case 'online-chat':
         return '💬 Online Chat';
       case 'online-video':
-        return '📹 Video Call';
+        return '📹 Google Meet';
       case 'online-event':
         return '🎯 Group Event';
       case 'offline-event':

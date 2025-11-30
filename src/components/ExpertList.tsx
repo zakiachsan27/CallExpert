@@ -200,7 +200,7 @@ export function ExpertList({
                     <div className="flex flex-wrap gap-2">
                       {[
                         { value: 'online-chat', label: '💬 Chat' },
-                        { value: 'online-video', label: '📹 Video Call' },
+                        { value: 'online-video', label: '📹 Google Meet' },
                         { value: 'online-event', label: '🎯 Online Event' },
                         { value: 'offline-event', label: '☕ Offline Event' }
                       ].map(type => (
@@ -271,7 +271,7 @@ export function ExpertList({
               {selectedSessionTypes.map(type => (
                 <Badge key={type} variant="secondary" className="gap-1">
                   {type === 'online-chat' && '💬 Chat'}
-                  {type === 'online-video' && '📹 Video'}
+                  {type === 'online-video' && '📹 Google Meet'}
                   {type === 'online-event' && '🎯 Event'}
                   {type === 'offline-event' && '☕ Offline'}
                   <button

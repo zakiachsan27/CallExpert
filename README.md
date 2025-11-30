@@ -1,7 +1,7 @@
 
-  # Call Expert Feature Design
+  # MentorinAja - Platform Mentoring & Konsultasi
 
-  This is a code bundle for Call Expert Feature Design. The original project is available at https://www.figma.com/design/mWkWmcv0BFB9BCjaOeRELh/Call-Expert-Feature-Design.
+  Platform untuk menghubungkan user dengan mentor profesional untuk konsultasi karir dan bimbingan.
 
   ## Running the code
 

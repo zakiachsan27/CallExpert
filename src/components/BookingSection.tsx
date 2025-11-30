@@ -5,7 +5,7 @@ import { Calendar as CalendarComponent } from './ui/calendar';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import type { Expert, Booking, SessionType } from '../App';
-import { createBooking } from '../services/database';
+import { createBooking, getAvailableMeetingLink } from '../services/database';
 import { useAuth } from '../contexts/AuthContext';
 
 type BookingSectionProps = {
@@ -90,6 +90,22 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
       const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
       const orderId = `ORDER-${timestamp}-${randomStr}`;
 
+      // Get available meeting link from pool for video calls
+      let meetingLink: string | null = null;
+      if (selectedSessionType.category === 'online-video') {
+        meetingLink = await getAvailableMeetingLink(
+          bookingDate,
+          selectedTime,
+          selectedSessionType.duration
+        );
+
+        // Fallback to random link if pool is empty or all links are occupied
+        if (!meetingLink) {
+          console.warn('Using fallback meeting link generation');
+          meetingLink = `https://meet.google.com/${Math.random().toString(36).substring(7)}`;
+        }
+      }
+
       // Create booking in database
       const { id: bookingId, order_id } = await createBooking({
         user_id: userId,
@@ -101,9 +117,7 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
         notes: topic.trim(),
         total_price: totalPrice,
         order_id: orderId,
-        meeting_link: selectedSessionType.category === 'online-video' 
-          ? `https://meet.google.com/${Math.random().toString(36).substring(7)}`
-          : null
+        meeting_link: meetingLink
       });
 
       // Create booking object for UI
@@ -117,7 +131,7 @@ export function BookingSection({ expert, selectedSessionType, onBookingComplete 
         topic: topic.trim(),
         notes: topic.trim(),
         totalPrice,
-        meetingLink: `https://meet.google.com/${Math.random().toString(36).substring(7)}`,
+        meetingLink: meetingLink || undefined,
         status: 'pending',
         paymentStatus: 'waiting'
       };

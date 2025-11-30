@@ -254,7 +254,7 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
                             </div>
                             <Badge variant="outline" className="text-xs mt-1">
                               {sessionType.category === 'online-chat' && '💬 Online Chat'}
-                              {sessionType.category === 'online-video' && '📹 Video Call'}
+                              {sessionType.category === 'online-video' && '📹 Google Meet'}
                               {sessionType.category === 'online-event' && '🎯 Group Event'}
                               {sessionType.category === 'offline-event' && `☕ Offline - ${expert.location.city}`}
                             </Badge>

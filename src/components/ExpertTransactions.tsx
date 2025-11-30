@@ -28,6 +28,7 @@ import { projectId } from '../utils/supabase/info.tsx';
 
 type Transaction = {
   id: string;
+  orderId?: string;
   userId: string;
   userName: string;
   userEmail: string;
@@ -118,6 +119,26 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const isSessionPending = (transaction: Transaction): boolean => {
+    if (transaction.type !== 'session' || transaction.paymentStatus !== 'paid') {
+      return false;
+    }
+
+    const now = new Date();
+    const sessionDate = new Date(transaction.date);
+
+    if (transaction.time) {
+      const [hours, minutes] = transaction.time.split(':').map(Number);
+      sessionDate.setHours(hours, minutes, 0, 0);
+      const sessionEndTime = new Date(sessionDate.getTime() + 60 * 60 * 1000);
+
+      // Session belum selesai (belum lewat waktu akhir)
+      return now <= sessionEndTime;
+    }
+
+    return false;
   };
 
   const getStatusBadge = (transaction: Transaction) => {
@@ -530,17 +551,19 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
       )}
 
       {/* Transactions List */}
-      <Card className="p-6">
-        <h2 className="mb-6">Riwayat Transaksi</h2>
+      {(() => {
+        const paidTransactions = transactions.filter(t => t.paymentStatus === 'paid');
+        const pendingSessions = paidTransactions.filter(isSessionPending).sort((a, b) => {
+          const dateA = new Date(a.date + ' ' + a.time);
+          const dateB = new Date(b.date + ' ' + b.time);
+          return dateA.getTime() - dateB.getTime();
+        });
+        const completedTransactions = paidTransactions.filter(t => !isSessionPending(t));
 
-        {transactions.filter(t => t.paymentStatus === 'paid').length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <DollarSign className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p>Belum ada transaksi</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {transactions.filter(t => t.paymentStatus === 'paid').map((transaction) => (
+        // Get next upcoming session
+        const nextSession = pendingSessions.length > 0 ? pendingSessions[0] : null;
+
+        const renderTransactionCard = (transaction: Transaction) => (
               <div
                 key={transaction.id}
                 className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -568,7 +591,7 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div>
                           <p className="font-medium">{transaction.userName}</p>
-                          <p className="text-sm text-gray-600">{transaction.userEmail}</p>
+                          <p className="text-xs text-gray-500 mt-1">ID: {transaction.orderId || transaction.id}</p>
                         </div>
                         {/* Status badges - di kanan pada mobile */}
                         <div className="flex gap-2 flex-shrink-0 sm:hidden">
@@ -581,10 +604,8 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
                         <div className="text-purple-600 flex-shrink-0">
                           {getCategoryIcon(transaction.itemCategory)}
                         </div>
-                        <span className="font-medium truncate">{transaction.itemName}</span>
-                        <span className="text-gray-400 hidden sm:inline">•</span>
-                        <span className="capitalize text-gray-600 hidden sm:inline">
-                          {transaction.itemCategory?.replace(/-/g, ' ')}
+                        <span className="font-medium truncate capitalize">
+                          {transaction.itemName || transaction.itemCategory?.replace(/-/g, ' ') || 'Layanan'}
                         </span>
                       </div>
 
@@ -629,10 +650,62 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </Card>
+        );
+
+        return (
+          <>
+            {/* Menunggu Sesi Section */}
+            {pendingSessions.length > 0 && (
+              <Card className="p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2>Menunggu Sesi ({pendingSessions.length})</h2>
+                </div>
+
+                {/* Next Session Info */}
+                {nextSession && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <p className="text-sm font-medium text-blue-900 mb-1">Sesi Terdekat:</p>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2 text-sm text-blue-700">
+                        <Calendar className="w-4 h-4" />
+                        <span>{new Date(nextSession.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                        <span>•</span>
+                        <Clock className="w-4 h-4" />
+                        <span>{nextSession.time}</span>
+                        <span>•</span>
+                        <span className="font-medium">{nextSession.itemName}</span>
+                      </div>
+                      {nextSession.orderId && (
+                        <p className="text-xs text-blue-600">ID: {nextSession.orderId}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  {pendingSessions.map((transaction) => renderTransactionCard(transaction))}
+                </div>
+              </Card>
+            )}
+
+            {/* Riwayat Selesai Section */}
+            <Card className="p-6">
+              <h2 className="mb-6">Riwayat Selesai</h2>
+
+              {completedTransactions.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <DollarSign className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p>Belum ada transaksi selesai</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {completedTransactions.map((transaction) => renderTransactionCard(transaction))}
+                </div>
+              )}
+            </Card>
+          </>
+        );
+      })()}
 
       {/* Withdraw Dialog */}
       <Dialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>

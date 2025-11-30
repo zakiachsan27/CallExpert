@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  Clock, 
-  Video, 
-  MessageCircle, 
-  Users, 
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  Video,
+  MessageCircle,
+  Users,
   MapPinned,
   CheckCircle,
   XCircle,
@@ -26,6 +27,7 @@ type UserTransactionHistoryProps = {
 
 export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) {
   const { userId } = useAuth();
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -43,7 +45,9 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
       console.log('Fetching user bookings for user:', userId);
       const data = await getBookingsByUser(userId);
       console.log('Bookings data:', data);
-      setBookings(data);
+      // Filter only paid bookings
+      const paidBookings = data.filter((booking: any) => booking.payment_status === 'paid');
+      setBookings(paidBookings);
     } catch (err) {
       console.error('Error fetching bookings:', err);
       setError('Gagal memuat riwayat transaksi');
@@ -70,16 +74,16 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
     });
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return <Badge className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" />Terkonfirmasi</Badge>;
-      case 'pending':
+  const getStatusBadge = (paymentStatus: string) => {
+    switch (paymentStatus) {
+      case 'paid':
+        return <Badge className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" />Paid</Badge>;
+      case 'waiting':
         return <Badge variant="secondary"><Loader2 className="w-3 h-3 mr-1 animate-spin" />Menunggu</Badge>;
       case 'cancelled':
         return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Dibatalkan</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline">{paymentStatus}</Badge>;
     }
   };
 
@@ -98,18 +102,12 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
     }
   };
 
+  const handleCardClick = (orderId: string) => {
+    navigate(`/invoice/${orderId}`);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Button variant="ghost" onClick={onBack}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Kembali
-          </Button>
-        </div>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Title */}
         <div className="mb-8">
@@ -158,7 +156,11 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
         {!isLoading && !error && bookings.length > 0 && (
           <div className="space-y-4">
             {bookings.map((booking) => (
-              <Card key={booking.id} className="p-6 hover:shadow-md transition-shadow">
+              <Card
+                key={booking.id}
+                className="p-6 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => handleCardClick(booking.order_id || booking.id)}
+              >
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                   {/* Booking Details */}
                   <div className="flex-1">
@@ -177,8 +179,11 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
                             <p className="text-gray-600 text-sm">
                               {booking.expert?.role || 'Expert'} {booking.expert?.company ? `at ${booking.expert.company}` : ''}
                             </p>
+                            <p className="text-gray-500 text-xs mt-1">
+                              ID: {booking.order_id || booking.id}
+                            </p>
                           </div>
-                          {getStatusBadge(booking.status)}
+                          {getStatusBadge(booking.payment_status)}
                         </div>
 
                         <Separator className="my-3" />
@@ -213,7 +218,7 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
                             <Receipt className="w-5 h-5 text-gray-400" />
                             <div>
                               <p className="text-sm text-gray-500">Total Biaya</p>
-                              <p className="text-green-600">{formatPrice(booking.totalPrice)}</p>
+                              <p className="text-green-600">{formatPrice(booking.total_price || 0)}</p>
                             </div>
                           </div>
                         </div>
@@ -244,31 +249,7 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
                     )}
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex lg:flex-col gap-2">
-                    {booking.status === 'confirmed' && (
-                      <>
-                        <Button className="flex-1 lg:flex-none" size="sm">
-                          Hubungi Expert
-                        </Button>
-                        {booking.meetingLink && (
-                          <Button 
-                            variant="outline" 
-                            className="flex-1 lg:flex-none" 
-                            size="sm"
-                            onClick={() => window.open(booking.meetingLink, '_blank')}
-                          >
-                            Join Meeting
-                          </Button>
-                        )}
-                      </>
-                    )}
-                    {booking.status === 'pending' && (
-                      <Button variant="outline" className="flex-1 lg:flex-none" size="sm">
-                        Batalkan
-                      </Button>
-                    )}
-                  </div>
+                  {/* Actions removed as per requirement */}
                 </div>
               </Card>
             ))}

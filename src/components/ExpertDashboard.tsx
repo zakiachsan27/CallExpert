@@ -9,12 +9,12 @@ import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ExpertTransactions } from './ExpertTransactions';
-import { 
-  ArrowLeft, 
-  Save, 
-  User, 
-  Briefcase, 
-  GraduationCap, 
+import {
+  ArrowLeft,
+  Save,
+  User,
+  Briefcase,
+  GraduationCap,
   Award,
   MapPin,
   Calendar,
@@ -32,9 +32,11 @@ import {
   Receipt,
   FileText,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Bell
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import type { Expert, SessionType, DigitalProduct } from '../App';
 import { projectId } from '../utils/supabase/info.tsx';
 import { isSlugAvailable } from '../services/database';
@@ -53,6 +55,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
 
   // Basic Info
   const [name, setName] = useState('');
@@ -120,10 +123,10 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
   useEffect(() => {
     fetchExpertProfile();
-    
+
     // Auto set availability to online when dashboard opens
     updateAvailabilityStatus('online');
-    
+
     // Set to offline when component unmounts (user leaves dashboard)
     return () => {
       updateAvailabilityStatus('offline');
@@ -616,8 +619,8 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Kembali
               </Button>
-              <Button 
-                onClick={handleSave} 
+              <Button
+                onClick={handleSave}
                 disabled={isSaving || !hasChanges}
                 className="bg-purple-600 hover:bg-purple-700"
               >
@@ -1187,10 +1190,16 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                   <Video className="w-5 h-5 text-purple-600" />
                   <h2>Tipe Sesi Konsultasi</h2>
                 </div>
-                <Button onClick={addSessionType} variant="outline" size="sm" className="w-full sm:w-auto">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Tambah
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <Button onClick={() => setShowScheduleDialog(true)} variant="outline" size="sm" className="w-full sm:w-auto">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Jadwal Konsultasi
+                  </Button>
+                  <Button onClick={addSessionType} variant="outline" size="sm" className="w-full sm:w-auto">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Tambah
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-6">
@@ -1223,7 +1232,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="online-chat">💬 Online Chat</SelectItem>
-                            <SelectItem value="online-video">📹 Video Call</SelectItem>
+                            <SelectItem value="online-video">📹 Google Meet</SelectItem>
                             <SelectItem value="online-event">🎯 Group Event</SelectItem>
                             <SelectItem value="offline-event">☕ Offline Event</SelectItem>
                           </SelectContent>
@@ -1338,6 +1347,17 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                           rows={2}
                         />
                       </div>
+                      <div className="md:col-span-2">
+                        <Label>Link Produk Digital</Label>
+                        <Input
+                          value={product.downloadLink || ''}
+                          onChange={(e) => updateDigitalProduct(index, 'downloadLink', e.target.value)}
+                          placeholder="https://drive.google.com/... atau link download lainnya"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Link ini hanya akan terlihat oleh customer setelah pembayaran selesai
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1351,15 +1371,20 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
             </Card>
           )}
 
-          {/* Availability Schedule */}
-          {showOnlyServices && (
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <Calendar className="w-5 h-5 text-purple-600" />
-                <h2>Jadwal Ketersediaan</h2>
-              </div>
+          {/* Jadwal Konsultasi Dialog */}
+          <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-purple-600" />
+                  Jadwal Konsultasi
+                </DialogTitle>
+                <DialogDescription>
+                  Atur hari dan jam ketersediaan Anda untuk konsultasi
+                </DialogDescription>
+              </DialogHeader>
 
-              <div className="space-y-6">
+              <div className="space-y-6 py-4">
                 {/* Days Selection */}
                 <div>
                   <Label className="mb-3 block">Hari Tersedia</Label>
@@ -1383,18 +1408,18 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                 {/* Time Slots Per Day */}
                 <div>
                   <div className="mb-4">
-                    <Label className="text-base">Jam Ketersediaan</Label>
+                    <Label className="text-base">Jam Konsultasi</Label>
                   </div>
 
                   {/* Show time slots per day */}
                   <div className="space-y-4">
                     {availableDays.map((day) => {
                       const daySlots = availableTimeSlots.filter(slot => slot.day === day);
-                      
+
                       return (
                         <div key={day} className="border rounded-lg p-4 bg-gray-50">
                           <div className="flex items-center justify-between mb-3">
-                            <h4 className="capitalize">{day}</h4>
+                            <h4 className="capitalize font-medium">{day}</h4>
                             <Button
                               type="button"
                               size="sm"
@@ -1415,7 +1440,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
                             {availableTimeSlots.map((slot, index) => {
                               if (slot.day !== day) return null;
-                              
+
                               return (
                                 <div key={index} className="flex items-center gap-2 bg-white p-3 rounded border">
                                   <Clock className="w-4 h-4 text-purple-600 flex-shrink-0" />
@@ -1448,14 +1473,20 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
                     {availableDays.length === 0 && (
                       <p className="text-gray-500 text-center py-8">
-                        Pilih hari tersedia terlebih dahulu untuk menambahkan jam ketersediaan.
+                        Pilih hari tersedia terlebih dahulu untuk menambahkan jam konsultasi.
                       </p>
                     )}
                   </div>
                 </div>
               </div>
-            </Card>
-          )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowScheduleDialog(false)}>
+                  Tutup
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Save Button */}
           {!hideHeaderAndNav && (

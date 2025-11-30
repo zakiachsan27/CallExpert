@@ -27,7 +27,9 @@
       "Bash(echo:*)",
       "Bash(curl:*)",
       "Bash(supabase secrets list:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(powershell -Command \"(Get-Content ''c:\\Projects\\CallExpert\\src\\services\\database.ts'').Length\")",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
