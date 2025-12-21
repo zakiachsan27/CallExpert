@@ -28,8 +28,18 @@
       "Bash(curl:*)",
       "Bash(supabase secrets list:*)",
       "Bash(mkdir:*)",
-      "Bash(powershell -Command \"(Get-Content ''c:\\Projects\\CallExpert\\src\\services\\database.ts'').Length\")",
-      "Bash(npm run build:*)"
+      "Bash(grep:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell -Command \"Get-Content src\\\\index.css | Select-Object -First 5\")",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(supabase migration repair:*)",
+      "Bash(supabase projects:*)",
+      "Bash(supabase migration:*)",
+      "Bash(cd:*)",
+      "Bash(supabase start:*)",
+      "Bash(supabase stop:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "ask": []

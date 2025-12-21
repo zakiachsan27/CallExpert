@@ -829,32 +829,139 @@ app.get("/make-server-92eeba71/expert/transactions", async (c) => {
   }
 });
 
-// Expert Withdraw Request
+// Expert Withdraw Request - Create
 app.post("/make-server-92eeba71/expert/withdraw-request", async (c) => {
   try {
     const { error, user } = await verifyAuth(c.req.header('Authorization'));
-    
+
     if (error || !user) {
       return c.json({ error: error || 'Unauthorized' }, 401);
     }
 
     const withdrawData = await c.req.json();
-    const withdrawId = `withdraw:expert:${user.id}:${Date.now()}`;
+    const supabase = getServiceClient();
 
-    const withdraw = {
-      ...withdrawData,
-      id: withdrawId,
-      expertId: user.id,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
+    // Get expert ID from user ID
+    const { data: expertRecord, error: expertError } = await supabase
+      .from('experts')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
 
-    await kv.set(withdrawId, withdraw);
+    if (expertError || !expertRecord) {
+      return c.json({ error: 'Expert profile not found' }, 404);
+    }
 
-    return c.json({ withdraw });
+    const expertId = expertRecord.id;
+
+    // Validate required fields
+    if (!withdrawData.amount || withdrawData.amount <= 0) {
+      return c.json({ error: 'Invalid withdraw amount' }, 400);
+    }
+
+    if (!withdrawData.bankName || !withdrawData.accountNumber || !withdrawData.accountName) {
+      return c.json({ error: 'Bank account information is required' }, 400);
+    }
+
+    // Insert withdraw request to database
+    const { data: withdrawRecord, error: insertError } = await supabase
+      .from('withdraw_requests')
+      .insert({
+        expert_id: expertId,
+        amount: withdrawData.amount,
+        bank_name: withdrawData.bankName,
+        account_number: withdrawData.accountNumber,
+        account_name: withdrawData.accountName,
+        notes: withdrawData.notes || null,
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error creating withdraw request:', insertError);
+      return c.json({ error: 'Failed to create withdraw request', details: insertError.message }, 500);
+    }
+
+    console.log('Withdraw request created:', withdrawRecord.id);
+
+    return c.json({
+      id: withdrawRecord.id,
+      withdraw: {
+        id: withdrawRecord.id,
+        expertId: expertId,
+        amount: withdrawRecord.amount,
+        bankName: withdrawRecord.bank_name,
+        accountNumber: withdrawRecord.account_number,
+        accountName: withdrawRecord.account_name,
+        notes: withdrawRecord.notes,
+        status: withdrawRecord.status,
+        createdAt: withdrawRecord.created_at
+      }
+    });
   } catch (error) {
     console.error('Expert withdraw request error:', error);
     return c.json({ error: 'Internal server error while submitting withdraw request' }, 500);
+  }
+});
+
+// Expert Withdraw Requests - Get All
+app.get("/make-server-92eeba71/expert/withdraw-requests", async (c) => {
+  try {
+    const { error, user } = await verifyAuth(c.req.header('Authorization'));
+
+    if (error || !user) {
+      return c.json({ error: error || 'Unauthorized' }, 401);
+    }
+
+    const supabase = getServiceClient();
+
+    // Get expert ID from user ID
+    const { data: expertRecord, error: expertError } = await supabase
+      .from('experts')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (expertError || !expertRecord) {
+      return c.json({ error: 'Expert profile not found' }, 404);
+    }
+
+    const expertId = expertRecord.id;
+
+    // Fetch all withdraw requests for this expert
+    const { data: withdrawRequests, error: fetchError } = await supabase
+      .from('withdraw_requests')
+      .select('*')
+      .eq('expert_id', expertId)
+      .order('created_at', { ascending: false });
+
+    if (fetchError) {
+      console.error('Error fetching withdraw requests:', fetchError);
+      return c.json({ error: 'Failed to fetch withdraw requests', details: fetchError.message }, 500);
+    }
+
+    // Map to API response format
+    const formattedRequests = (withdrawRequests || []).map(wr => ({
+      id: wr.id,
+      expertId: wr.expert_id,
+      amount: wr.amount,
+      bankName: wr.bank_name,
+      accountNumber: wr.account_number,
+      accountName: wr.account_name,
+      notes: wr.notes,
+      status: wr.status,
+      processedAt: wr.processed_at,
+      rejectionReason: wr.rejection_reason,
+      createdAt: wr.created_at
+    }));
+
+    console.log(`Found ${formattedRequests.length} withdraw requests for expert ${expertId}`);
+
+    return c.json({ withdrawRequests: formattedRequests });
+  } catch (error) {
+    console.error('Get withdraw requests error:', error);
+    return c.json({ error: 'Internal server error while fetching withdraw requests' }, 500);
   }
 });
 

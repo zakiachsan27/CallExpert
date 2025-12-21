@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { HomePage } from './pages/HomePage';
+import { ExpertsPage } from './pages/ExpertsPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ExpertLoginPage } from './pages/ExpertLoginPage';
@@ -14,6 +15,8 @@ import { InvoicePage } from './pages/InvoicePage';
 import { SessionPage } from './pages/SessionPage';
 import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { AdminLoginPage } from './pages/AdminLoginPage';
+import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
 // Log environment info for debugging
 console.log('App loaded successfully with routing');
@@ -93,6 +96,7 @@ function App() {
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<HomePage />} />
+            <Route path="/experts" element={<ExpertsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/expert/login" element={<ExpertLoginPage />} />
@@ -146,6 +150,14 @@ function App() {
               }
             />
             <Route
+              path="/expert/dashboard/profil"
+              element={
+                <ProtectedRoute requireExpert>
+                  <ExpertDashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/expert/dashboard/transaksi"
               element={
                 <ProtectedRoute requireExpert>
@@ -161,6 +173,10 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminLoginPage />} />
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
 
             {/* 404 Not Found */}
             <Route path="*" element={<NotFoundPage />} />

@@ -96,7 +96,7 @@ export function BookingPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
       </div>
     );
   }
@@ -105,12 +105,12 @@ export function BookingPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+          <h2 className="text-2xl font-bold italic tracking-tight text-slate-900 mb-2">
             {error || 'Data tidak ditemukan'}
           </h2>
           <button
             onClick={handleBackToExpert}
-            className="text-purple-600 hover:underline"
+            className="text-brand-600 hover:text-brand-700 font-semibold transition"
           >
             Kembali ke Expert Detail
           </button>

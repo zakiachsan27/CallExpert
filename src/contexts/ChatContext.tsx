@@ -93,7 +93,6 @@ export function ChatProvider({ children }: ChatProviderProps) {
 
       if (durationMinutes) {
         setSessionDurationMinutes(durationMinutes);
-        setTimeRemainingSeconds(durationMinutes * 60);
       }
 
       // Start or join session
@@ -101,8 +100,43 @@ export function ChatProvider({ children }: ChatProviderProps) {
         const userType = expertId ? 'expert' : 'user';
         const session = await dbStartSession(bookingId, userType);
         setActiveSession(session);
+
+        // Calculate time remaining based on session state
+        if (session && durationMinutes) {
+          if (session.status === 'ended' || session.ended_at) {
+            // Session already ended - time remaining is 0
+            setTimeRemainingSeconds(0);
+          } else if (session.status === 'active') {
+            // Session is active - calculate remaining time from start
+            const sessionStartTime = session.expert_joined_at || session.user_joined_at;
+            if (sessionStartTime) {
+              const now = new Date();
+              const startTime = new Date(sessionStartTime);
+              const elapsedSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+              const totalSeconds = durationMinutes * 60;
+              const remaining = Math.max(0, totalSeconds - elapsedSeconds);
+              setTimeRemainingSeconds(remaining);
+
+              // If already expired, end the session
+              if (remaining === 0) {
+                dbEndSession(bookingId, 'timeout').catch(err => {
+                  console.error('Failed to auto-end expired session:', err);
+                });
+              }
+            } else {
+              setTimeRemainingSeconds(durationMinutes * 60);
+            }
+          } else {
+            // Session not started yet - full time
+            setTimeRemainingSeconds(durationMinutes * 60);
+          }
+        }
       } catch (startErr) {
         console.warn('Could not start session:', startErr);
+        // Set full time if we couldn't get session state
+        if (durationMinutes) {
+          setTimeRemainingSeconds(durationMinutes * 60);
+        }
       }
 
       // Fetch existing messages with error handling

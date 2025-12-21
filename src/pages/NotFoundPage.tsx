@@ -9,9 +9,9 @@ export function NotFoundPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="text-center">
         <div className="mb-8">
-          <h1 className="text-9xl font-bold text-purple-600">404</h1>
-          <h2 className="text-3xl font-bold text-gray-800 mt-4">Halaman Tidak Ditemukan</h2>
-          <p className="text-gray-600 mt-2 max-w-md mx-auto">
+          <h1 className="text-9xl font-bold italic text-brand-600">404</h1>
+          <h2 className="text-3xl font-bold italic tracking-tight text-slate-900 mt-4">Halaman Tidak Ditemukan</h2>
+          <p className="text-gray-500 mt-2 max-w-md mx-auto">
             Maaf, halaman yang Anda cari tidak ditemukan atau telah dipindahkan.
           </p>
         </div>
@@ -20,12 +20,13 @@ export function NotFoundPage() {
           <Button
             variant="outline"
             onClick={() => navigate(-1)}
+            className="hover:border-brand-600 hover:text-brand-600"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Kembali
           </Button>
           <Button
-            className="bg-purple-600 hover:bg-purple-700"
+            className="bg-brand-600 text-white font-bold rounded-xl shadow-lg shadow-brand-200 hover:bg-brand-700 transition transform hover:-translate-y-0.5"
             onClick={() => navigate('/')}
           >
             <Home className="w-4 h-4 mr-2" />

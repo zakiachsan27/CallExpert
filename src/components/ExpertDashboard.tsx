@@ -9,12 +9,12 @@ import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ExpertTransactions } from './ExpertTransactions';
-import {
-  ArrowLeft,
-  Save,
-  User,
-  Briefcase,
-  GraduationCap,
+import { 
+  ArrowLeft, 
+  Save, 
+  User, 
+  Briefcase, 
+  GraduationCap, 
   Award,
   MapPin,
   Calendar,
@@ -32,11 +32,9 @@ import {
   Receipt,
   FileText,
   Upload,
-  Image as ImageIcon,
-  Bell
+  Image as ImageIcon
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import type { Expert, SessionType, DigitalProduct } from '../App';
 import { projectId } from '../utils/supabase/info.tsx';
 import { isSlugAvailable } from '../services/database';
@@ -55,7 +53,6 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
-  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
 
   // Basic Info
   const [name, setName] = useState('');
@@ -123,10 +120,10 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
   useEffect(() => {
     fetchExpertProfile();
-
+    
     // Auto set availability to online when dashboard opens
     updateAvailabilityStatus('online');
-
+    
     // Set to offline when component unmounts (user leaves dashboard)
     return () => {
       updateAvailabilityStatus('offline');
@@ -603,7 +600,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
       </div>
     );
   }
@@ -619,10 +616,10 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Kembali
               </Button>
-              <Button
-                onClick={handleSave}
+              <Button 
+                onClick={handleSave} 
                 disabled={isSaving || !hasChanges}
-                className="bg-purple-600 hover:bg-purple-700"
+                className="bg-brand-600 hover:bg-brand-700"
               >
                 {isSaving ? (
                   <>
@@ -662,9 +659,9 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
           {!showOnlyServices && (
             <>
               {/* Resume Upload untuk Auto-Fill */}
-              <Card className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+              <Card className="p-6 bg-gradient-to-r from-brand-50 to-blue-50 border-brand-200">
                 <div className="flex items-start gap-4">
-                  <FileText className="w-10 h-10 text-purple-600 flex-shrink-0" />
+                  <FileText className="w-10 h-10 text-brand-600 flex-shrink-0" />
                   <div className="flex-1">
                     <h3 className="mb-2">Upload Resume untuk Auto-Fill</h3>
                     <p className="text-sm text-gray-600 mb-4">
@@ -681,7 +678,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                         />
                         <Button 
                           variant="default" 
-                          className="bg-purple-600 hover:bg-purple-700"
+                          className="bg-brand-600 hover:bg-brand-700"
                           disabled={isParsingResume}
                           asChild
                         >
@@ -713,7 +710,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
               <Card className="p-6">
                 <div className="flex items-center gap-2 mb-6">
-                  <User className="w-5 h-5 text-purple-600" />
+                  <User className="w-5 h-5 text-brand-600" />
                   <h2>Informasi Dasar</h2>
                 </div>
 
@@ -839,7 +836,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                         </label>
                       </div>
                       {(avatarPreview || avatar) && (
-                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-purple-200 flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-brand-200 flex-shrink-0">
                           <img 
                             src={avatarPreview || avatar} 
                             alt="Avatar preview" 
@@ -905,7 +902,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
           {!showOnlyServices && (
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-6">
-                <Award className="w-5 h-5 text-purple-600" />
+                <Award className="w-5 h-5 text-brand-600" />
                 <h2>Keahlian & Expertise</h2>
               </div>
 
@@ -1008,7 +1005,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
             <Card className="p-4 md:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                 <div className="flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-purple-600" />
+                  <Briefcase className="w-5 h-5 text-brand-600" />
                   <h2>Pengalaman Kerja</h2>
                 </div>
                 <Button onClick={addWorkExperience} variant="outline" size="sm" className="w-full sm:w-auto">
@@ -1078,7 +1075,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
           {!showOnlyServices && (
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-6">
-                <GraduationCap className="w-5 h-5 text-purple-600" />
+                <GraduationCap className="w-5 h-5 text-brand-600" />
                 <h2>Pendidikan</h2>
               </div>
 
@@ -1132,7 +1129,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
           {!showOnlyServices && (
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-6">
-                <Award className="w-5 h-5 text-purple-600" />
+                <Award className="w-5 h-5 text-brand-600" />
                 <h2>Pencapaian & Sertifikasi</h2>
               </div>
 
@@ -1187,19 +1184,13 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
             <Card className="p-4 md:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                 <div className="flex items-center gap-2">
-                  <Video className="w-5 h-5 text-purple-600" />
+                  <Video className="w-5 h-5 text-brand-600" />
                   <h2>Tipe Sesi Konsultasi</h2>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                  <Button onClick={() => setShowScheduleDialog(true)} variant="outline" size="sm" className="w-full sm:w-auto">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Jadwal Konsultasi
-                  </Button>
-                  <Button onClick={addSessionType} variant="outline" size="sm" className="w-full sm:w-auto">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Tambah
-                  </Button>
-                </div>
+                <Button onClick={addSessionType} variant="outline" size="sm" className="w-full sm:w-auto">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tambah
+                </Button>
               </div>
 
               <div className="space-y-6">
@@ -1232,7 +1223,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="online-chat">💬 Online Chat</SelectItem>
-                            <SelectItem value="online-video">📹 Google Meet</SelectItem>
+                            <SelectItem value="online-video">📹 Video Call</SelectItem>
                             <SelectItem value="online-event">🎯 Group Event</SelectItem>
                             <SelectItem value="offline-event">☕ Offline Event</SelectItem>
                           </SelectContent>
@@ -1283,7 +1274,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
             <Card className="p-4 md:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                 <div className="flex items-center gap-2">
-                  <Package className="w-5 h-5 text-purple-600" />
+                  <Package className="w-5 h-5 text-brand-600" />
                   <h2>Produk Digital</h2>
                 </div>
                 <Button onClick={addDigitalProduct} variant="outline" size="sm" className="w-full sm:w-auto">
@@ -1347,17 +1338,6 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                           rows={2}
                         />
                       </div>
-                      <div className="md:col-span-2">
-                        <Label>Link Produk Digital</Label>
-                        <Input
-                          value={product.downloadLink || ''}
-                          onChange={(e) => updateDigitalProduct(index, 'downloadLink', e.target.value)}
-                          placeholder="https://drive.google.com/... atau link download lainnya"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          Link ini hanya akan terlihat oleh customer setelah pembayaran selesai
-                        </p>
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -1371,20 +1351,15 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
             </Card>
           )}
 
-          {/* Jadwal Konsultasi Dialog */}
-          <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-purple-600" />
-                  Jadwal Konsultasi
-                </DialogTitle>
-                <DialogDescription>
-                  Atur hari dan jam ketersediaan Anda untuk konsultasi
-                </DialogDescription>
-              </DialogHeader>
+          {/* Availability Schedule */}
+          {showOnlyServices && (
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <Calendar className="w-5 h-5 text-brand-600" />
+                <h2>Jadwal Ketersediaan</h2>
+              </div>
 
-              <div className="space-y-6 py-4">
+              <div className="space-y-6">
                 {/* Days Selection */}
                 <div>
                   <Label className="mb-3 block">Hari Tersedia</Label>
@@ -1408,18 +1383,18 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                 {/* Time Slots Per Day */}
                 <div>
                   <div className="mb-4">
-                    <Label className="text-base">Jam Konsultasi</Label>
+                    <Label className="text-base">Jam Ketersediaan</Label>
                   </div>
 
                   {/* Show time slots per day */}
                   <div className="space-y-4">
                     {availableDays.map((day) => {
                       const daySlots = availableTimeSlots.filter(slot => slot.day === day);
-
+                      
                       return (
                         <div key={day} className="border rounded-lg p-4 bg-gray-50">
                           <div className="flex items-center justify-between mb-3">
-                            <h4 className="capitalize font-medium">{day}</h4>
+                            <h4 className="capitalize">{day}</h4>
                             <Button
                               type="button"
                               size="sm"
@@ -1440,10 +1415,10 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
                             {availableTimeSlots.map((slot, index) => {
                               if (slot.day !== day) return null;
-
+                              
                               return (
                                 <div key={index} className="flex items-center gap-2 bg-white p-3 rounded border">
-                                  <Clock className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                                  <Clock className="w-4 h-4 text-brand-600 flex-shrink-0" />
                                   <Input
                                     type="time"
                                     value={slot.start}
@@ -1473,20 +1448,14 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
                     {availableDays.length === 0 && (
                       <p className="text-gray-500 text-center py-8">
-                        Pilih hari tersedia terlebih dahulu untuk menambahkan jam konsultasi.
+                        Pilih hari tersedia terlebih dahulu untuk menambahkan jam ketersediaan.
                       </p>
                     )}
                   </div>
                 </div>
               </div>
-
-              <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button variant="outline" onClick={() => setShowScheduleDialog(false)}>
-                  Tutup
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+            </Card>
+          )}
 
           {/* Save Button */}
           {!hideHeaderAndNav && (
@@ -1497,7 +1466,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
               <Button 
                 onClick={handleSave} 
                 disabled={isSaving || !hasChanges}
-                className="bg-purple-600 hover:bg-purple-700"
+                className="bg-brand-600 hover:bg-brand-700"
               >
                 {isSaving ? (
                   <>
@@ -1524,7 +1493,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
               <Button 
                 onClick={handleSave} 
                 disabled={isSaving}
-                className="bg-purple-600 hover:bg-purple-700 shadow-md"
+                className="bg-brand-600 hover:bg-brand-700 shadow-md"
                 size="lg"
               >
                 {isSaving ? (

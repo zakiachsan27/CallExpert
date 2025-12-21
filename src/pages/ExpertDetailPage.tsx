@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Header } from '../components/Header';
+import { Footer } from '../components/Footer';
 import { ExpertDetail } from '../components/ExpertDetail';
 import { Loader2 } from 'lucide-react';
 import type { Expert } from '../App';
@@ -55,7 +57,7 @@ export function ExpertDetailPage() {
   };
 
   const handleBack = () => {
-    navigate('/');
+    navigate('/experts');
   };
 
   const handleBookingClick = (sessionTypeId: string) => {
@@ -65,29 +67,44 @@ export function ExpertDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      <div className="min-h-screen bg-slate-100 flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
+        </div>
       </div>
     );
   }
 
   if (error || !expert) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            {error || 'Expert tidak ditemukan'}
-          </h2>
-          <button
-            onClick={handleBack}
-            className="text-purple-600 hover:underline"
-          >
-            Kembali ke Beranda
-          </button>
+      <div className="min-h-screen bg-slate-100 flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold italic tracking-tight text-slate-900 mb-2">
+              {error || 'Expert tidak ditemukan'}
+            </h2>
+            <button
+              onClick={handleBack}
+              className="text-brand-600 hover:text-brand-700 font-semibold transition"
+            >
+              Kembali ke Daftar Expert
+            </button>
+          </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
-  return <ExpertDetail expert={expert} onBack={handleBack} onBookingClick={handleBookingClick} />;
+  return (
+    <div className="min-h-screen bg-slate-100 flex flex-col">
+      <Header />
+      <div className="flex-1">
+        <ExpertDetail expert={expert} onBack={handleBack} onBookingClick={handleBookingClick} />
+      </div>
+      <Footer />
+    </div>
+  );
 }

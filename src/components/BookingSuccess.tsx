@@ -558,11 +558,11 @@ export function BookingSuccess({ booking: initialBooking, onBackToHome }: Bookin
                             onClick={() => setSelectedEWallet('ovo')}
                             className={`border rounded-lg p-6 cursor-pointer transition-all text-center ${
                               selectedEWallet === 'ovo'
-                                ? 'border-purple-600 bg-purple-100'
-                                : 'border-gray-200 hover:border-purple-300'
+                                ? 'border-brand-600 bg-brand-100'
+                                : 'border-gray-200 hover:border-brand-300'
                             }`}
                           >
-                            <Wallet className="w-8 h-8 mx-auto mb-2 text-purple-600" />
+                            <Wallet className="w-8 h-8 mx-auto mb-2 text-brand-600" />
                             <p>OVO</p>
                           </div>
 

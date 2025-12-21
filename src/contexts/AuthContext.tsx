@@ -7,6 +7,7 @@ type AuthContextType = {
   expertAccessToken: string | null;
   userId: string | null;
   expertId: string | null;
+  userName: string | null;
   isUserLoggedIn: boolean;
   isExpertLoggedIn: boolean;
   loginAsUser: (token: string, userId: string) => Promise<void>;
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [expertAccessToken, setExpertAccessToken] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [expertId, setExpertId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Initialize auth state from Supabase session on mount
@@ -54,10 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('user_id', user.id);
         } else {
           // Regular user
+          const name = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
           setUserAccessToken(token);
           setUserId(user.id);
+          setUserName(name);
           localStorage.setItem('user_access_token', token);
           localStorage.setItem('user_id', user.id);
+          localStorage.setItem('user_name', name);
         }
       }
     } catch (error) {
@@ -73,6 +78,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserId(authUserId);
       localStorage.setItem('user_access_token', token);
       localStorage.setItem('user_id', authUserId);
+
+      // Ensure user exists in users table
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) {
+        const name = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
+        setUserName(name);
+        localStorage.setItem('user_name', name);
+        await createUser({
+          id: user.id,
+          email: user.email || '',
+          name
+        });
+      }
     } catch (error) {
       console.error('Error in loginAsUser:', error);
       throw error;
@@ -119,8 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
       setUserAccessToken(null);
       setUserId(null);
+      setUserName(null);
       localStorage.removeItem('user_access_token');
       localStorage.removeItem('user_id');
+      localStorage.removeItem('user_name');
     } catch (error) {
       console.error('Error in logoutUser:', error);
     }
@@ -145,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     expertAccessToken,
     userId,
     expertId,
+    userName,
     isUserLoggedIn: !!userAccessToken,
     isExpertLoggedIn: !!expertAccessToken,
     loginAsUser,

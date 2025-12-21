@@ -1,12 +1,13 @@
-import { ArrowLeft, MapPin, Star, Award, Briefcase, GraduationCap, Calendar, ChevronRight, TrendingUp, MessageCircle, Download, Video, Users, MapPinned } from 'lucide-react';
+import { MapPin, Star, Briefcase, Download, MessageCircle, Zap, Book } from 'lucide-react';
 import { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { BookingSection } from './BookingSection';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import type { Expert, Booking, DigitalProduct } from '../App';
+import type { Expert, DigitalProduct } from '../App';
 
 type ExpertDetailProps = {
   expert: Expert;
@@ -27,15 +28,12 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
     }).format(price);
   };
 
-  const selectedSessionType = expert.sessionTypes.find(st => st.id === selectedSessionTypeId);
-
   const scrollToSessionTypes = () => {
     if (sidebarRef.current) {
-      // Use setTimeout to wait for the DOM to update
       setTimeout(() => {
         if (sidebarRef.current) {
           const offsetTop = sidebarRef.current.getBoundingClientRect().top + window.pageYOffset;
-          const headerHeight = 100; // Height of sticky header + some padding
+          const headerHeight = 100;
           window.scrollTo({
             top: offsetTop - headerHeight,
             behavior: 'smooth'
@@ -46,184 +44,166 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Button variant="ghost" onClick={onBack}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Kembali ke Daftar Expert
-          </Button>
-        </div>
-      </div>
+    <div className="bg-slate-100 font-sans text-slate-900">
+      {/* MAIN CONTENT */}
+      <main className="max-w-6xl mx-auto py-8 px-4">
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28 lg:pb-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content - Left Column (2/3) */}
+        {/* BREADCRUMB */}
+        <div className="mb-6 flex items-center gap-2 text-sm text-gray-500">
+          <Link to="/" className="hover:text-brand-600 transition">Home</Link>
+          <span>/</span>
+          <Link to="/experts" className="hover:text-brand-600 transition">Expert</Link>
+          <span>/</span>
+          <span className="text-slate-900 font-medium">{expert.name.split(' ').slice(0, 2).join(' ')}</span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start relative">
+
+          {/* --- LEFT COLUMN --- */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Profile Header */}
-            <Card className="p-6">
-              <div className="flex flex-col sm:flex-row gap-6">
-                {/* Avatar with Availability Status */}
-                <div className="relative">
-                  <img
-                    src={expert.avatar}
-                    alt={expert.name}
-                    className="w-32 h-32 rounded-full object-cover"
-                  />
-                  {/* Availability Badge */}
-                  {expert.availability === 'online' ? (
-                    <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
-                      <Badge className="bg-green-500 hover:bg-green-600">
-                        <div className="w-2 h-2 bg-white rounded-full mr-1.5 animate-pulse"></div>
-                        Online Now
-                      </Badge>
-                    </div>
-                  ) : (
-                    <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
-                      <Badge variant="secondary">
-                        Offline
-                      </Badge>
-                    </div>
-                  )}
+
+            {/* CARD 1: HEADER PROFIL */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col sm:flex-row gap-6 items-start">
+              <div className="relative flex-shrink-0">
+                <img
+                  src={expert.avatar}
+                  alt={expert.name}
+                  className="w-24 h-24 rounded-full border-4 border-brand-50 bg-white object-cover"
+                />
+                {expert.availability === 'online' && (
+                  <div className="absolute bottom-0 right-0 bg-green-500 w-5 h-5 rounded-full border-4 border-white"></div>
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                  <div>
+                    <h1 className="text-2xl font-bold text-slate-900">{expert.name}</h1>
+                    <p className="text-gray-500 font-medium">{expert.role} @ {expert.company}</p>
+                  </div>
+                  <div className="bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg border border-yellow-100 flex items-center gap-1 text-xs font-bold">
+                    <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
+                    <span>{expert.rating}</span>
+                    <span className="text-gray-400 font-normal">({expert.reviewCount} Reviews)</span>
+                  </div>
                 </div>
 
-                <div className="flex-1">
-                  <div>
-                    <h1>{expert.name}</h1>
-                    <p className="text-gray-600 mt-1">{expert.role} at {expert.company}</p>
-                  </div>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {expert.expertise.map((tag) => (
+                    <span key={tag} className="px-2.5 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-semibold">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
 
-                  <div className="flex flex-wrap items-center gap-4 mt-4">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-                      <span>{expert.rating}</span>
-                      <span className="text-gray-500">({expert.reviewCount} reviews)</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-gray-600">
-                      <Briefcase className="w-4 h-4" />
-                      <span>{expert.experience}+ years exp</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-gray-600">
-                      <MapPin className="w-4 h-4" />
-                      <span>{expert.location.city}, {expert.location.country}</span>
-                    </div>
+                <div className="flex items-center gap-4 mt-4 text-sm text-gray-500 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    <Briefcase className="w-4 h-4" />
+                    <span>{expert.experience}+ Tahun Pengalaman</span>
                   </div>
-
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {expert.expertise.map((skill) => (
-                      <Badge key={skill} variant="secondary">
-                        {skill}
-                      </Badge>
-                    ))}
+                  <div className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    <span>{expert.location.city}, {expert.location.country}</span>
                   </div>
                 </div>
               </div>
-            </Card>
+            </div>
 
-            {/* About */}
-            <Card className="p-6">
-              <h2>Tentang</h2>
-              <p className="text-gray-700 mt-3 leading-relaxed">{expert.bio}</p>
-            </Card>
+            {/* CARD 2: TENTANG SAYA */}
+            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+              <div className="prose prose-sm max-w-none text-gray-600 leading-relaxed">
+                <h3 className="text-lg font-bold text-slate-900 mb-2 flex items-center gap-2">
+                  <span>👋</span> Tentang Saya
+                </h3>
+                <p>{expert.bio}</p>
+              </div>
+            </div>
 
-            {/* Program Highlight */}
+            {/* CARD 3: HIGHLIGHT PROGRAM */}
             {expert.programHighlight && (
-              <Card className="p-6 border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-purple-50">
-                <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="w-5 h-5 text-blue-600" />
-                  <h2 className="text-blue-900">Program Highlight</h2>
-                </div>
-                <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{expert.programHighlight}</p>
-              </Card>
+              <div className="bg-gradient-to-r from-brand-50 to-white border border-brand-100 p-6 rounded-2xl relative overflow-hidden shadow-sm">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-brand-100 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                <h3 className="text-brand-700 font-bold mb-2 flex items-center gap-2 relative z-10">
+                  <Zap className="w-5 h-5" />
+                  Program Highlight
+                </h3>
+                <p className="text-sm text-slate-700 relative z-10 whitespace-pre-wrap">
+                  {expert.programHighlight}
+                </p>
+              </div>
             )}
 
-            {/* Achievements - moved here after Program Highlight */}
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Award className="w-5 h-5 text-blue-600" />
-                <h2>Pencapaian & Sertifikasi</h2>
-              </div>
-              <ul className="space-y-3">
-                {expert.achievements?.map((achievement, index) => (
-                  <li key={index} className="flex gap-3">
-                    <div className="w-2 h-2 rounded-full bg-blue-600 mt-2 flex-shrink-0" />
-                    <span className="text-gray-700">{achievement}</span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-
-            {/* Work Experience */}
+            {/* CARD 4: PENGALAMAN KERJA */}
             {expert.workExperience && expert.workExperience.length > 0 && (
-              <Card className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Briefcase className="w-5 h-5 text-blue-600" />
-                  <h2>Pengalaman Kerja</h2>
-                </div>
-                <div className="space-y-6">
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-900 mb-6">Pengalaman Kerja</h3>
+                <div className="space-y-0 pl-2">
                   {expert.workExperience.map((exp, index) => (
-                    <div key={index}>
-                      {index > 0 && <Separator className="mb-6" />}
+                    <div key={index} className={`flex gap-4 relative ${index < expert.workExperience!.length - 1 ? 'pb-8' : ''}`}>
+                      {index < expert.workExperience!.length - 1 && (
+                        <div className="absolute left-[7px] top-2 bottom-0 w-[2px] bg-gray-200"></div>
+                      )}
+                      <div className={`w-4 h-4 rounded-full ${index === 0 ? 'bg-brand-600' : 'bg-gray-300'} border-4 border-white shadow-sm flex-shrink-0 relative z-10`}></div>
                       <div>
-                        <h3>{exp.title}</h3>
-                        <p className="text-gray-600 mt-1">{exp.company}</p>
-                        <p className="text-gray-500 mt-1">{exp.period}</p>
-                        <p className="text-gray-700 mt-2">{exp.description}</p>
+                        <h4 className="font-bold text-slate-900 text-sm">{exp.title}</h4>
+                        <p className="text-xs text-gray-500 mb-1">{exp.company} • {exp.period}</p>
+                        <p className="text-sm text-gray-600 mt-2">{exp.description}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-              </Card>
+              </div>
             )}
 
-            {/* Education */}
+            {/* CARD 5: PENDIDIKAN */}
             {expert.education && expert.education.length > 0 && (
-              <Card className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <GraduationCap className="w-5 h-5 text-blue-600" />
-                  <h2>Pendidikan</h2>
-                </div>
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <span>🎓</span> Pendidikan
+                </h3>
                 <ul className="space-y-2">
                   {expert.education.map((edu, index) => (
                     <li key={index} className="flex gap-3">
-                      <div className="w-2 h-2 rounded-full bg-blue-600 mt-2 flex-shrink-0" />
-                      <span className="text-gray-700">{edu}</span>
+                      <div className="w-2 h-2 rounded-full bg-brand-600 mt-2 flex-shrink-0" />
+                      <span className="text-gray-700 text-sm">{edu}</span>
                     </li>
                   ))}
                 </ul>
-              </Card>
+              </div>
             )}
 
-            {/* Skills */}
-            {expert.skills && expert.skills.length > 0 && (
-              <Card className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp className="w-5 h-5 text-blue-600" />
-                  <h2>Keahlian</h2>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {expert.skills.map((skill) => (
-                    <Badge key={skill} variant="outline">
-                      {skill}
-                    </Badge>
+            {/* CARD 6: PENCAPAIAN & SERTIFIKASI */}
+            {expert.achievements && expert.achievements.length > 0 && (
+              <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  <span>🏆</span> Pencapaian & Sertifikasi
+                </h3>
+                <ul className="space-y-2">
+                  {expert.achievements.map((achievement, index) => (
+                    <li key={index} className="flex gap-3">
+                      <div className="w-2 h-2 rounded-full bg-brand-600 mt-2 flex-shrink-0" />
+                      <span className="text-gray-700 text-sm">{achievement}</span>
+                    </li>
                   ))}
-                </div>
-              </Card>
+                </ul>
+              </div>
             )}
 
+            <div className="h-10"></div>
           </div>
 
-          {/* Sidebar - Right Column (1/3) */}
+          {/* --- RIGHT COLUMN (STICKY) --- */}
           <div className="lg:col-span-1">
-            <div ref={sidebarRef} className="space-y-4 lg:sticky lg:top-24">
-              <Card className="p-6">
-                <h3 className="mb-4">Tipe Sesi Konsultasi</h3>
+            <div ref={sidebarRef} className="sticky top-24 space-y-6">
 
-                <div className="space-y-3">
+              {/* KONSULTASI CARD */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-lg shadow-gray-100 overflow-hidden">
+                <div className="p-4 bg-white border-b border-gray-100">
+                  <h3 className="font-bold text-sm text-slate-900">Pilih Sesi Konsultasi</h3>
+                  <p className="text-xs text-slate-600">Jadwal tersedia minggu ini</p>
+                </div>
+                <div className="p-4 space-y-4">
                   {expert.sessionTypes.map((sessionType) => (
                     <div key={sessionType.id}>
-                      {/* Session Type Card */}
                       <div
                         onClick={() => {
                           if (onBookingClick) {
@@ -232,50 +212,54 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
                             setSelectedSessionTypeId(sessionType.id);
                           }
                         }}
-                        className={`border rounded-lg p-4 cursor-pointer transition-all ${selectedSessionTypeId === sessionType.id
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                          }`}
+                        className={`border rounded-xl p-4 transition cursor-pointer group bg-white hover:bg-brand-50/30 ${
+                          selectedSessionTypeId === sessionType.id
+                            ? 'border-brand-500 bg-brand-50/30'
+                            : 'border-gray-200 hover:border-brand-300'
+                        }`}
                       >
-                        <div className="flex items-start gap-3 mb-2">
-                          {/* Category Icon */}
-                          <div className="flex-shrink-0 mt-0.5">
-                            {sessionType.category === 'online-chat' && <MessageCircle className="w-5 h-5 text-blue-600" />}
-                            {sessionType.category === 'online-video' && <Video className="w-5 h-5 text-blue-600" />}
-                            {sessionType.category === 'online-event' && <Users className="w-5 h-5 text-blue-600" />}
-                            {sessionType.category === 'offline-event' && <MapPinned className="w-5 h-5 text-blue-600" />}
-                          </div>
-
-                          <div className="flex-1">
-                            <div className="flex justify-between items-start">
-                              <h4 className="text-gray-900">{sessionType.name}</h4>
-                              <ChevronRight className={`w-5 h-5 transition-transform flex-shrink-0 ml-2 ${selectedSessionTypeId === sessionType.id ? 'rotate-90 text-blue-600' : 'text-gray-400'
-                                }`} />
-                            </div>
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {sessionType.category === 'online-chat' && '💬 Online Chat'}
-                              {sessionType.category === 'online-video' && '📹 Google Meet'}
-                              {sessionType.category === 'online-event' && '🎯 Group Event'}
-                              {sessionType.category === 'offline-event' && `☕ Offline - ${expert.location.city}`}
-                            </Badge>
-                          </div>
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-bold text-sm text-slate-900 group-hover:text-brand-700">{sessionType.name}</h4>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded border ${
+                            sessionType.category === 'online-chat'
+                              ? 'text-brand-600 bg-brand-50 border-brand-100'
+                              : sessionType.category === 'online-video'
+                              ? 'text-blue-600 bg-blue-50 border-blue-100'
+                              : sessionType.category === 'online-event'
+                              ? 'text-green-600 bg-green-50 border-green-100'
+                              : 'text-orange-600 bg-orange-50 border-orange-100'
+                          }`}>
+                            {sessionType.duration} Min
+                          </span>
                         </div>
-                        <p className="text-gray-600 text-sm mb-2 ml-8">{sessionType.description}</p>
-                        <div className="flex justify-between items-center ml-8">
-                          <p className="text-gray-500 text-sm">{sessionType.duration} menit</p>
-                          <p className="text-green-600">{formatPrice(sessionType.price)}</p>
+                        <p className="text-xs text-gray-500 mb-3 line-clamp-2">{sessionType.description}</p>
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-brand-600">{formatPrice(sessionType.price)}</span>
+                          <Button
+                            size="sm"
+                            className="bg-brand-600 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-brand-700 transition shadow-sm h-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onBookingClick) {
+                                onBookingClick(sessionType.id);
+                              } else {
+                                setSelectedSessionTypeId(sessionType.id);
+                              }
+                            }}
+                          >
+                            Book
+                          </Button>
                         </div>
                       </div>
 
                       {/* Booking Section appears immediately after the selected card */}
                       {!onBookingClick && selectedSessionTypeId === sessionType.id && (
                         <div className="mt-3">
-                          <Card className="p-6" ref={bookingSectionRef}>
+                          <Card className="p-4 border-brand-200 bg-brand-50/30">
                             <BookingSection
                               expert={expert}
                               selectedSessionType={sessionType}
                               onBookingComplete={(booking) => {
-                                // This is fallback for when onBookingClick is not provided
                                 console.log('Booking complete:', booking);
                               }}
                             />
@@ -285,55 +269,60 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
                     </div>
                   ))}
                 </div>
-              </Card>
-              {/*Digital Products */}
+              </div>
+
+              {/* PRODUK DIGITAL CARD */}
               {expert.digitalProducts && expert.digitalProducts.length > 0 && (
-                <Card className="p-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Download className="w-5 h-5 text-blue-600" />
-                    <h3>Produk Digital</h3>
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-4 border-b border-gray-100">
+                    <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
+                      <Book className="w-4 h-4 text-brand-600" />
+                      Produk Digital
+                    </h3>
                   </div>
-                  <div className="space-y-3">
+                  <div className="p-4 space-y-4">
                     {expert.digitalProducts.map((product) => (
-                      <div
-                        key={product.id}
-                        className="border rounded-lg p-4 hover:border-blue-300 transition-all cursor-pointer"
-                        onClick={() => setSelectedProduct(product)}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <h4 className="text-gray-900 mb-1">{product.name}</h4>
-                            <Badge variant="outline" className="text-xs mb-2">
-                              {product.type === 'ebook' && '📚 E-Book'}
-                              {product.type === 'course' && '🎓 Course'}
-                              {product.type === 'template' && '📋 Template'}
-                              {product.type === 'guide' && '📖 Guide'}
-                              {product.type === 'other' && '📦 Other'}
-                            </Badge>
-                          </div>
+                      <div key={product.id} className="flex items-start gap-3">
+                        <div className="w-10 h-12 bg-brand-100 rounded flex items-center justify-center text-brand-600 flex-shrink-0">
+                          <span className="text-xs font-bold">
+                            {product.type === 'ebook' ? 'PDF' : product.type === 'course' ? 'VID' : 'DOC'}
+                          </span>
                         </div>
-                        <p className="text-gray-600 text-sm mb-3">{product.description}</p>
-                        <div className="flex items-center justify-between">
-                          <p className="text-green-600">{formatPrice(product.price)}</p>
-                          <Button size="sm" variant="outline">
-                            <Download className="w-3 h-3 mr-1" />
-                            Beli
-                          </Button>
+                        <div className="flex-1">
+                          <h4
+                            className="font-bold text-xs text-slate-900 hover:text-brand-600 cursor-pointer"
+                            onClick={() => setSelectedProduct(product)}
+                          >
+                            {product.name}
+                          </h4>
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">{product.description}</p>
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="text-xs font-bold text-brand-600">{formatPrice(product.price)}</span>
+                            <Button
+                              size="sm"
+                              className="bg-brand-600 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-brand-700 transition shadow-sm h-8"
+                              onClick={() => setSelectedProduct(product)}
+                            >
+                              Beli
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
-                </Card>
+                </div>
               )}
+
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Sticky Book Meeting Button - FAB */}
+        </div>
+      </main>
+
+      {/* Sticky Book Meeting Button - FAB (Mobile Only) */}
       <button
         onClick={scrollToSessionTypes}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center z-20 transition-all hover:scale-110 lg:hidden"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-brand-600 hover:bg-brand-700 text-white rounded-full shadow-lg flex items-center justify-center z-20 transition-all hover:scale-110 lg:hidden"
         aria-label="Book Meeting"
         title="Pesan Sesi Konsultasi"
       >
@@ -349,7 +338,7 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
           {selectedProduct && (
             <div className="space-y-4">
               <div>
-                <h3 className="mb-2">{selectedProduct.name}</h3>
+                <h3 className="font-bold mb-2">{selectedProduct.name}</h3>
                 <Badge variant="outline" className="mb-3">
                   {selectedProduct.type === 'ebook' && '📚 E-Book'}
                   {selectedProduct.type === 'course' && '🎓 Course'}
@@ -357,24 +346,24 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
                   {selectedProduct.type === 'guide' && '📖 Guide'}
                   {selectedProduct.type === 'other' && '📦 Other'}
                 </Badge>
-                <p className="text-gray-700">{selectedProduct.description}</p>
+                <p className="text-gray-700 text-sm">{selectedProduct.description}</p>
               </div>
 
               <Separator />
 
               <div className="bg-gray-50 p-4 rounded-lg">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-gray-600">Harga Produk</span>
-                  <span>{formatPrice(selectedProduct.price)}</span>
+                  <span className="text-gray-600 text-sm">Harga Produk</span>
+                  <span className="text-sm">{formatPrice(selectedProduct.price)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Biaya Admin</span>
-                  <span>{formatPrice(2000)}</span>
+                  <span className="text-gray-600 text-sm">Biaya Admin</span>
+                  <span className="text-sm">{formatPrice(2000)}</span>
                 </div>
                 <Separator className="my-2" />
                 <div className="flex justify-between items-center">
-                  <span>Total</span>
-                  <span className="text-green-600">{formatPrice(selectedProduct.price + 2000)}</span>
+                  <span className="font-bold">Total</span>
+                  <span className="font-bold text-brand-600">{formatPrice(selectedProduct.price + 2000)}</span>
                 </div>
               </div>
 
@@ -383,7 +372,7 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
                   <Download className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-gray-700">
                     <p className="mb-1">Setelah pembayaran berhasil:</p>
-                    <ul className="list-disc list-inside space-y-1">
+                    <ul className="list-disc list-inside space-y-1 text-xs">
                       <li>Link download akan dikirim ke email Anda</li>
                       <li>Akses lifetime untuk produk digital ini</li>
                       <li>Support dari expert tersedia</li>
@@ -396,7 +385,7 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
                 <Button variant="outline" className="flex-1" onClick={() => setSelectedProduct(null)}>
                   Batal
                 </Button>
-                <Button className="flex-1" onClick={() => {
+                <Button className="flex-1 bg-brand-600 hover:bg-brand-700" onClick={() => {
                   alert('Fitur pembayaran produk digital akan segera hadir!');
                   setSelectedProduct(null);
                 }}>

@@ -1,6 +1,4 @@
-import { Star, Briefcase, Award } from 'lucide-react';
-import { Card } from './ui/card';
-import { Badge } from './ui/badge';
+import { Star, Briefcase, MapPin } from 'lucide-react';
 import type { Expert } from '../App';
 
 type ExpertCardProps = {
@@ -10,7 +8,7 @@ type ExpertCardProps = {
 
 export function ExpertCard({ expert, onClick }: ExpertCardProps) {
   const lowestPrice = Math.min(...expert.sessionTypes.map(s => s.price));
-  
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -20,93 +18,68 @@ export function ExpertCard({ expert, onClick }: ExpertCardProps) {
   };
 
   return (
-    <Card
-      className="overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
+    <div
+      className="bg-white p-6 rounded-3xl border border-gray-200 text-left hover:shadow-xl hover:-translate-y-1 transition flex flex-col cursor-pointer"
       onClick={onClick}
     >
-      <div className="relative">
-        {/* Availability Badge */}
-        <div className="absolute top-3 right-3 z-10">
-          {expert.availability === 'online' ? (
-            <Badge className="bg-green-500 hover:bg-green-600">
-              <div className="w-2 h-2 bg-white rounded-full mr-1.5 animate-pulse"></div>
-              Online
-            </Badge>
-          ) : (
-            <Badge variant="secondary">
-              Offline
-            </Badge>
-          )}
+      {/* Header: Avatar + Rating */}
+      <div className="flex justify-between items-start mb-4">
+        <img
+          src={expert.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${expert.name}`}
+          alt={expert.name}
+          className="w-14 h-14 rounded-2xl bg-gray-100 border object-cover"
+        />
+        <span className="text-xs font-bold text-yellow-700 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100 flex items-center gap-1">
+          <Star className="w-3 h-3 fill-current" /> {expert.rating.toFixed(1)}
+        </span>
+      </div>
+
+      {/* Info */}
+      <h3 className="font-bold text-lg italic text-slate-900">{expert.name}</h3>
+      <p className="text-sm text-gray-500 mb-4 font-medium">{expert.role} @ {expert.company}</p>
+
+      {/* Location & Experience */}
+      <div className="space-y-2 mb-5">
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <MapPin className="w-4 h-4" />
+          <span>{expert.location.city}, {expert.location.country}</span>
         </div>
-        
-        {/* Avatar */}
-        <div className="p-6 pb-3">
-          <img
-            src={expert.avatar}
-            alt={expert.name}
-            className="w-20 h-20 rounded-full object-cover mx-auto mb-4 group-hover:scale-105 transition-transform"
-          />
-          
-          <div className="text-center mb-3">
-            <h3 className="mb-1">{expert.name}</h3>
-            <p className="text-gray-600 mb-1">{expert.role}</p>
-            <p className="text-gray-500">{expert.company}</p>
-          </div>
-
-          {/* Location */}
-          <div className="text-center mb-3">
-            <p className="text-gray-500">📍 {expert.location.city}, {expert.location.country}</p>
-          </div>
-
-          {/* Rating */}
-          <div className="flex items-center justify-center gap-1 mb-4">
-            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span>{expert.rating}</span>
-            <span className="text-gray-500">({expert.reviewCount} reviews)</span>
-          </div>
-
-          {/* Expertise Tags */}
-          <div className="flex flex-wrap gap-1.5 justify-center mb-4">
-            {expert.expertise.slice(0, 3).map((skill) => (
-              <Badge key={skill} variant="secondary">
-                {skill}
-              </Badge>
-            ))}
-            {expert.expertise.length > 3 && (
-              <Badge variant="secondary">+{expert.expertise.length - 3}</Badge>
-            )}
-          </div>
+        <div className="flex items-center gap-2 text-sm text-gray-600 font-bold bg-gray-50 w-fit px-2 py-1 rounded">
+          <Briefcase className="w-4 h-4" />
+          <span>{expert.experience}+ Years Experience</span>
         </div>
       </div>
 
-      <div className="border-t border-gray-100 p-4 bg-gray-50">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-gray-600">
-            <Briefcase className="w-4 h-4" />
-            <span>{expert.experience}+ years</span>
-          </div>
-          <div className="text-right">
-            <p className="text-gray-500">Mulai dari</p>
-            <p className="text-blue-600">{formatPrice(lowestPrice)}</p>
-          </div>
-        </div>
-        
-        {/* Session Types Available */}
-        <div className="mt-3 flex flex-wrap gap-1">
-          {expert.sessionTypes.some(s => s.category === 'online-chat') && (
-            <Badge variant="outline" className="text-xs">💬 Chat</Badge>
-          )}
-          {expert.sessionTypes.some(s => s.category === 'online-video') && (
-            <Badge variant="outline" className="text-xs">📹 Google Meet</Badge>
-          )}
-          {expert.sessionTypes.some(s => s.category === 'online-event') && (
-            <Badge variant="outline" className="text-xs">🎯 Event</Badge>
-          )}
-          {expert.sessionTypes.some(s => s.category === 'offline-event') && (
-            <Badge variant="outline" className="text-xs">☕ Offline</Badge>
-          )}
-        </div>
+      {/* Expertise Tags */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {expert.expertise.slice(0, 2).map((skill) => (
+          <span key={skill} className="text-xs bg-slate-100 px-2.5 py-1 rounded-md text-slate-700 font-medium">
+            {skill}
+          </span>
+        ))}
+        {expert.expertise.length > 2 && (
+          <span className="text-xs bg-slate-100 px-2.5 py-1 rounded-md text-slate-700 font-medium">
+            +{expert.expertise.length - 2}
+          </span>
+        )}
       </div>
-    </Card>
+
+      {/* Footer: Price + Button */}
+      <div className="mt-auto flex justify-between items-center pt-4 border-t border-gray-100">
+        <div>
+          <p className="text-xs text-gray-400">Mulai dari</p>
+          <span className="text-base font-bold text-brand-600">{formatPrice(lowestPrice)}</span>
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onClick();
+          }}
+          className="bg-brand-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-brand-200 hover:bg-brand-700 transition"
+        >
+          Book Now
+        </button>
+      </div>
+    </div>
   );
 }

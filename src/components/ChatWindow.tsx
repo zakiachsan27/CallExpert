@@ -72,7 +72,7 @@ export function ChatWindow({ expertName, userName }: ChatWindowProps) {
   return (
     <Card className="w-full h-full flex flex-col bg-white">
       {/* Header */}
-      <div className="border-b p-4 flex items-center justify-between bg-gradient-to-r from-blue-50 to-purple-50">
+      <div className="border-b p-4 flex items-center justify-between bg-gradient-to-r from-brand-50 to-indigo-50">
         <div className="flex items-center gap-3">
           <div>
             <h3 className="font-semibold text-gray-900">Sesi Konsultasi Chat</h3>
@@ -83,21 +83,25 @@ export function ChatWindow({ expertName, userName }: ChatWindowProps) {
         <div className="flex items-center gap-4">
           {/* Timer */}
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-blue-600" />
+            <Clock className={`w-4 h-4 ${timeRemainingSeconds === 0 || activeSession?.status === 'ended' ? 'text-red-600' : 'text-blue-600'}`} />
             <div className="text-right">
-              <div className="text-sm font-semibold text-gray-900">{formatTime(timeRemainingSeconds)}</div>
-              {sessionDurationMinutes && <div className="text-xs text-gray-500">dari {sessionDurationMinutes} min</div>}
+              <div className={`text-sm font-semibold ${timeRemainingSeconds === 0 || activeSession?.status === 'ended' ? 'text-red-600' : 'text-gray-900'}`}>
+                {activeSession?.status === 'ended' ? 'Berakhir' : formatTime(timeRemainingSeconds)}
+              </div>
+              {sessionDurationMinutes && activeSession?.status !== 'ended' && (
+                <div className="text-xs text-gray-500">dari {sessionDurationMinutes} min</div>
+              )}
             </div>
           </div>
 
           {/* Status indicator */}
           <div className="flex items-center gap-2">
-            {activeSession?.status === 'active' ? (
+            {activeSession?.status === 'active' && timeRemainingSeconds !== 0 ? (
               <>
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                 <span className="text-xs text-green-600 font-medium">Aktif</span>
               </>
-            ) : activeSession?.status === 'waiting_expert' ? (
+            ) : activeSession?.status === 'waiting_expert' && timeRemainingSeconds !== 0 ? (
               <>
                 <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></div>
                 <span className="text-xs text-yellow-600 font-medium">Menunggu Expert</span>
@@ -155,7 +159,7 @@ export function ChatWindow({ expertName, userName }: ChatWindowProps) {
       </div>
 
       {/* Warning when time is running out */}
-      {timeRemainingSeconds !== null && timeRemainingSeconds < 300 && timeRemainingSeconds > 0 && (
+      {timeRemainingSeconds !== null && timeRemainingSeconds < 300 && timeRemainingSeconds > 0 && activeSession?.status !== 'ended' && (
         <div className="bg-yellow-50 border border-yellow-200 p-3 mx-4 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0" />
           <p className="text-sm text-yellow-600">Waktu sesi tinggal {Math.floor(timeRemainingSeconds / 60)} menit lagi</p>
@@ -164,14 +168,19 @@ export function ChatWindow({ expertName, userName }: ChatWindowProps) {
 
       {/* Input area */}
       <div className="border-t p-4 bg-white space-y-3">
-        {activeSession?.status === 'ended' && (
+        {/* Session ended message */}
+        {(activeSession?.status === 'ended' || timeRemainingSeconds === 0) && (
           <div className="bg-red-50 border border-red-200 p-3 rounded-lg flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-red-600" />
-            <p className="text-sm text-red-600">Sesi telah berakhir. {activeSession.ended_by === 'timeout' ? 'Durasi telah habis.' : 'Sesi ditutup.'}</p>
+            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+            <p className="text-sm text-red-600 font-medium">
+              {activeSession?.status === 'ended'
+                ? (activeSession.ended_by === 'timeout' ? 'Sesi telah berakhir. Durasi waktu telah habis.' : 'Sesi telah berakhir.')
+                : 'Waktu sesi telah habis. Chat sudah tidak aktif.'}
+            </p>
           </div>
         )}
 
-        {canChat ? (
+        {canChat && timeRemainingSeconds !== 0 ? (
           <form onSubmit={handleSendMessage} className="flex gap-2">
             <input
               type="text"
@@ -191,7 +200,7 @@ export function ChatWindow({ expertName, userName }: ChatWindowProps) {
           </form>
         ) : null}
 
-        {activeSession?.status !== 'ended' && (
+        {activeSession?.status !== 'ended' && timeRemainingSeconds !== 0 && (
           <Button
             onClick={handleEndSession}
             variant="destructive"
