@@ -39,7 +39,8 @@
       "Bash(supabase start:*)",
       "Bash(supabase stop:*)",
       "Bash(git pull:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

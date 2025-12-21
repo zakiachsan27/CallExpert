@@ -588,6 +588,38 @@ export interface BookingData {
   meeting_link?: string;
 }
 
+/**
+ * Get available meeting link from the pool for a given time slot
+ * Uses the SQL function find_available_meeting_link to find a link with no time conflict
+ */
+export async function getAvailableMeetingLink(
+  bookingDate: string,
+  bookingTime: string,
+  duration: number
+): Promise<string | null> {
+  try {
+    const { data, error } = await supabase.rpc('find_available_meeting_link', {
+      p_booking_date: bookingDate,
+      p_booking_time: bookingTime,
+      p_duration: duration
+    });
+
+    if (error) {
+      console.error('Error finding available meeting link:', error);
+      return null;
+    }
+
+    if (data && data.length > 0) {
+      return data[0].meeting_link;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error in getAvailableMeetingLink:', error);
+    return null;
+  }
+}
+
 export async function createBooking(data: BookingData): Promise<{ id: string; order_id: string }> {
   try {
     const { data: result, error } = await supabase
