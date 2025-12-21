@@ -1,7 +1,7 @@
 
-  # MentorinAja - Platform Mentoring & Konsultasi
+  # MentorinAja - Platform Mentoring & Konsultasi (Test Webhook)
 
-  Platform untuk menghubungkan user dengan mentor profesional untuk konsultasi karir dan bimbingan.
+  Platform untuk menghubungkan user dengan mentor profesional untuk konsultasi karir dan bimbingan. 
 
   ## Running the code
 
