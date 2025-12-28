@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardFooter, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -13,7 +13,7 @@ import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle, Loader2, Award } from 
 export function ExpertLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { loginAsExpert } = useAuth();
+  const { loginAsExpert, isExpertLoggedIn, isLoading: authLoading } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +23,40 @@ export function ExpertLoginPage() {
 
   // Return URL for redirect after login
   const returnUrl = (location.state as any)?.from || '/expert/dashboard';
+
+  // CRITICAL: Redirect to dashboard if already logged in as expert
+  useEffect(() => {
+    console.log('🔐 ExpertLoginPage: authLoading=', authLoading, 'isExpertLoggedIn=', isExpertLoggedIn);
+
+    if (!authLoading && isExpertLoggedIn) {
+      console.log('🔐 ExpertLoginPage: Already logged in, redirecting to dashboard');
+      navigate(returnUrl, { replace: true });
+    }
+  }, [authLoading, isExpertLoggedIn, navigate, returnUrl]);
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-600 mx-auto mb-4" />
+          <p className="text-gray-600">Memuat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render login form if already logged in (prevents flash)
+  if (isExpertLoggedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-brand-600 mx-auto mb-4" />
+          <p className="text-gray-600">Mengalihkan ke dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,35 +206,20 @@ export function ExpertLoginPage() {
 
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-4 border-t border-gray-50 pt-6 bg-gray-50/50 rounded-b-3xl">
+        <CardFooter className="border-t border-gray-100 pt-4 pb-4 bg-gray-50/50 rounded-b-3xl">
           {/* Info untuk registrasi */}
-          <div className="w-full p-4 bg-brand-50 border border-brand-200 rounded-lg">
+          <div className="w-full p-4 bg-brand-50 border border-brand-200 rounded-xl">
             <p className="text-sm text-gray-700 text-center">
               <strong>Belum punya akun expert?</strong><br />
               Hubungi admin untuk mendaftar sebagai expert di platform kami.
             </p>
           </div>
-
-          <div className="relative w-full">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-gray-50 px-2 text-gray-400">Atau</span>
-            </div>
-          </div>
-
-          <div className="text-center w-full">
-             <Link to="/login" className="text-xs font-semibold text-gray-500 hover:text-brand-600 transition flex items-center justify-center gap-2">
-               Anda seorang User? <span className="text-brand-600">Login di sini</span>
-             </Link>
-          </div>
         </CardFooter>
 
       </Card>
 
-      {/* Footer Copy */}
-      <div className="absolute bottom-6 text-xs text-gray-400 text-center w-full">
+      {/* Footer Copy - Hidden on mobile */}
+      <div className="hidden sm:block absolute bottom-6 text-xs text-gray-400 text-center w-full">
         © 2025 MentorinAja. Expert Portal.
       </div>
     </div>

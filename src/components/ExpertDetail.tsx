@@ -322,7 +322,7 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
       {/* Sticky Book Meeting Button - FAB (Mobile Only) */}
       <button
         onClick={scrollToSessionTypes}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-brand-600 hover:bg-brand-700 text-white rounded-full shadow-lg flex items-center justify-center z-20 transition-all hover:scale-110 lg:hidden"
+        className="fixed bottom-6 right-6 mb-safe w-14 h-14 bg-brand-600 hover:bg-brand-700 text-white rounded-full shadow-lg flex items-center justify-center z-20 transition-all hover:scale-110 lg:hidden"
         aria-label="Book Meeting"
         title="Pesan Sesi Konsultasi"
       >

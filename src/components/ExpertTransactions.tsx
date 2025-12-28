@@ -32,7 +32,8 @@ import {
   FileText,
   CreditCard,
   Printer,
-  CheckCircle2
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import { projectId } from '../utils/supabase/info.tsx';
 
@@ -64,13 +65,19 @@ type ExpertTransactionsProps = {
   accessToken: string;
 };
 
+// Cache key for sessionStorage
+const TRANSACTIONS_CACHE_KEY = 'expert_transactions_cache';
+const CACHE_TIMESTAMP_KEY = 'expert_transactions_cache_timestamp';
+
 export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
   const navigate = useNavigate();
   const { transactionId } = useParams();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [withdrawRequests, setWithdrawRequests] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -91,7 +98,25 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
   const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
-    fetchTransactions();
+    // Try to load from cache first
+    const cachedData = sessionStorage.getItem(TRANSACTIONS_CACHE_KEY);
+    const cachedTimestamp = sessionStorage.getItem(CACHE_TIMESTAMP_KEY);
+
+    if (cachedData && cachedTimestamp) {
+      try {
+        const parsed = JSON.parse(cachedData);
+        setTransactions(parsed.transactions || []);
+        setWithdrawRequests(parsed.withdrawRequests || []);
+        setLastUpdated(new Date(cachedTimestamp));
+        setIsLoading(false);
+      } catch (e) {
+        // If cache is corrupted, fetch fresh data
+        fetchTransactions();
+      }
+    } else {
+      // No cache, fetch fresh data
+      fetchTransactions();
+    }
 
     // Load saved bank account info from localStorage
     const savedBankName = localStorage.getItem('expert_bank_name');
@@ -113,7 +138,11 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
     }
   }, [transactionId, transactions]);
 
-  const fetchTransactions = async () => {
+  const fetchTransactions = async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsRefreshing(true);
+    }
+
     try {
       // Fetch regular transactions
       const transactionsResponse = await fetch(
@@ -130,6 +159,23 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
       }
 
       const transactionsData = await transactionsResponse.json();
+
+      // DEBUG: Log all transactions from API
+      console.log('📊 All transactions from API:', transactionsData.transactions);
+      console.log('📊 Transactions count:', transactionsData.transactions?.length || 0);
+
+      // Log each transaction with payment status
+      transactionsData.transactions?.forEach((t: any, i: number) => {
+        console.log(`Transaction ${i + 1}:`, {
+          id: t.id,
+          orderId: t.orderId,
+          userName: t.userName,
+          date: t.date,
+          paymentStatus: t.paymentStatus,
+          status: t.status,
+          createdAt: t.createdAt
+        });
+      });
 
       // Fetch withdraw requests
       let withdrawData: Transaction[] = [];
@@ -175,12 +221,22 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
       setTransactions(allTransactions);
       setWithdrawRequests(withdrawData);
 
+      // Save to cache
+      const now = new Date();
+      sessionStorage.setItem(TRANSACTIONS_CACHE_KEY, JSON.stringify({
+        transactions: allTransactions,
+        withdrawRequests: withdrawData
+      }));
+      sessionStorage.setItem(CACHE_TIMESTAMP_KEY, now.toISOString());
+      setLastUpdated(now);
+
     } catch (err) {
       console.error('Error fetching transactions:', err);
       // Don't show error for empty data - just show empty state
       // Only log to console for debugging
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -696,67 +752,64 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
 
   // List Transaction View
   return (
-    <div className="space-y-6">
+    <>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-brand-600 to-indigo-600 px-4 sm:px-6 py-5 text-white">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Transaksi & Pendapatan
+            </h2>
+            <p className="text-sm text-white/80 mt-0.5">Kelola pendapatan dan riwayat transaksi Anda</p>
+          </div>
+          <Button
+            size="sm"
+            className="bg-white/20 hover:bg-white/30 text-white border-0 h-9 gap-2"
+            onClick={() => {
+              const newValue = !showStats;
+              setShowStats(newValue);
+              localStorage.setItem('expert_show_stats', newValue.toString());
+            }}
+          >
+            {showStats ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {showStats ? 'Sembunyikan Statistik' : 'Tampilkan Statistik'}
+          </Button>
+        </div>
+      </div>
+
       {error && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="bg-yellow-50 border-b border-yellow-200 p-4">
           <p className="text-yellow-800 text-sm">{error}</p>
         </div>
       )}
 
-      {/* Toggle Button untuk Statistics */}
-      <div className="flex justify-between items-center">
-        <h3 className="font-medium">Statistik & Pendapatan</h3>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            const newValue = !showStats;
-            setShowStats(newValue);
-            localStorage.setItem('expert_show_stats', newValue.toString());
-          }}
-          className="gap-2"
-        >
-          {showStats ? (
-            <>
-              <ChevronUp className="w-4 h-4" />
-              Sembunyikan
-            </>
-          ) : (
-            <>
-              <ChevronDown className="w-4 h-4" />
-              Tampilkan
-            </>
-          )}
-        </Button>
-      </div>
-
       {/* Stats Cards - Collapsible */}
       {showStats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Card 1: Total Pendapatan */}
-          <Card className="flex flex-col justify-between relative overflow-hidden border-gray-200">
-            <div className="absolute right-0 top-0 p-4 opacity-10 text-green-600">
-              <TrendingUp className="w-20 h-20" />
-            </div>
-            <CardContent className="p-6">
-              <p className="text-sm font-medium text-gray-500 mb-1">Total Pendapatan</p>
-              <h2 className="text-3xl font-bold text-slate-900">{formatCurrency(totalRevenue)}</h2>
-              <div className="mt-4 flex items-center gap-1 text-xs text-green-600 font-bold bg-green-50 w-fit px-2 py-1 rounded">
+        <div className="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/50">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+            {/* Card 1: Total Pendapatan */}
+            <div className="bg-white rounded-xl p-4 relative overflow-hidden border border-gray-100">
+              <div className="absolute right-0 top-0 p-2 opacity-10 text-green-600">
+                <TrendingUp className="w-12 h-12 md:w-16 md:h-16" />
+              </div>
+              <p className="text-xs font-medium text-gray-500 mb-0.5">Total Pendapatan</p>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900">{formatCurrency(totalRevenue)}</h2>
+              <div className="mt-2 flex items-center gap-1 text-[10px] md:text-xs text-green-600 font-bold bg-green-50 w-fit px-1.5 py-0.5 rounded">
                 <span>↗ +12%</span> <span>bulan ini</span>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Card 2: Saldo Siap Tarik (Purple Theme) */}
-          <Card className="bg-brand-600 flex flex-col justify-between relative overflow-hidden border-none text-white shadow-xl">
-            <div className="absolute right-0 top-0 p-4 opacity-10 text-white">
-              <CreditCard className="w-20 h-20" />
             </div>
-            <CardContent className="p-6">
-              <p className="text-sm font-medium text-brand-100 mb-1">Saldo Siap Tarik</p>
-              <h2 className="text-3xl font-bold">{formatCurrency(withdrawableAmount)}</h2>
+
+            {/* Card 2: Saldo Siap Tarik (Purple Theme) */}
+            <div className="bg-gradient-to-br from-brand-600 to-brand-700 rounded-xl p-4 relative overflow-hidden text-white shadow-lg">
+              <div className="absolute right-0 top-0 p-2 opacity-10 text-white">
+                <DollarSign className="w-12 h-12 md:w-16 md:h-16" />
+              </div>
+              <p className="text-xs font-medium text-brand-100 mb-0.5">Saldo Siap Tarik</p>
+              <h2 className="text-xl md:text-2xl font-bold">{formatCurrency(withdrawableAmount)}</h2>
               <Button
-                className="mt-6 w-full bg-white text-brand-600 hover:bg-brand-50 font-bold shadow-sm h-9 text-xs gap-2"
+                className="mt-3 w-full bg-white text-brand-600 hover:bg-brand-50 font-bold shadow-sm h-8 text-[10px] md:text-xs gap-1"
                 onClick={(e) => {
                   e.stopPropagation();
                   setWithdrawAmount(withdrawableAmount.toString());
@@ -766,40 +819,192 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
               >
                 Tarik Dana <ArrowUpRight className="w-3 h-3" />
               </Button>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Card 3: Total Sesi Selesai */}
-          <Card className="flex flex-col justify-between border-gray-200">
-            <CardContent className="p-6">
-              <p className="text-sm font-medium text-gray-500 mb-1">Total Sesi Selesai</p>
-              <h2 className="text-3xl font-bold text-slate-900">{completedSessions}</h2>
-              <div className="mt-4 w-full bg-gray-100 rounded-full h-2">
+            {/* Card 3: Total Sesi Selesai */}
+            <div className="bg-white rounded-xl p-4 border border-gray-100">
+              <p className="text-xs font-medium text-gray-500 mb-0.5">Total Sesi Selesai</p>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900">{completedSessions}</h2>
+              <div className="mt-2 w-full bg-gray-100 rounded-full h-1.5">
                 <div
-                  className="bg-brand-600 h-2 rounded-full transition-all"
+                  className="bg-brand-600 h-1.5 rounded-full transition-all"
                   style={{ width: `${Math.min((completedSessions / targetSessions) * 100, 100)}%` }}
                 ></div>
               </div>
-              <p className="text-xs text-gray-400 mt-2">Target: {targetSessions} sesi/bulan</p>
-            </CardContent>
-          </Card>
+              <p className="text-[10px] text-gray-400 mt-1.5">Target: {targetSessions} sesi/bulan</p>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Transactions Table */}
-      <Card className="border-gray-200 overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between py-4 px-6 border-b border-gray-100 bg-white">
-          <CardTitle className="text-lg">Riwayat Transaksi</CardTitle>
+      {/* Upcoming Sessions Section */}
+      {(() => {
+        const now = new Date();
+        const upcomingSessions = transactions.filter(t => {
+          if (t.type !== 'session' || t.paymentStatus !== 'paid') return false;
+          if (!t.date) return false;
+
+          const sessionDate = new Date(t.date);
+          if (t.time) {
+            const [hours, minutes] = t.time.split(':').map(Number);
+            sessionDate.setHours(hours, minutes, 0, 0);
+          }
+
+          return sessionDate > now;
+        }).sort((a, b) => {
+          const dateA = new Date(a.date + (a.time ? 'T' + a.time : ''));
+          const dateB = new Date(b.date + (b.time ? 'T' + b.time : ''));
+          return dateA.getTime() - dateB.getTime();
+        });
+
+        if (upcomingSessions.length === 0) return null;
+
+        return (
+          <div className="border-b border-gray-100 p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                <Calendar className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">Sesi Mendatang</h3>
+                <p className="text-xs text-gray-500">{upcomingSessions.length} sesi menunggu jadwal</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {upcomingSessions.slice(0, 5).map((session) => {
+                const sessionDate = new Date(session.date);
+                const isToday = sessionDate.toDateString() === now.toDateString();
+                const isTomorrow = sessionDate.toDateString() === new Date(now.getTime() + 24 * 60 * 60 * 1000).toDateString();
+
+                return (
+                  <div
+                    key={session.id}
+                    className={`p-3 rounded-lg border transition cursor-pointer hover:shadow-md ${
+                      isToday
+                        ? 'bg-amber-50 border-amber-200'
+                        : isTomorrow
+                          ? 'bg-blue-50 border-blue-200'
+                          : 'bg-gray-50 border-gray-100'
+                    }`}
+                    onClick={() => {
+                      setSelectedTransaction(session);
+                      navigate(`/expert/dashboard/transaksi/${session.id}`);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Avatar className={`w-10 h-10 ${getAvatarColor(session.userName)} border-none flex-shrink-0`}>
+                          <AvatarFallback className="font-bold text-xs">
+                            {getInitials(session.userName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900 truncate">{session.userName}</p>
+                          <p className="text-xs text-gray-500 truncate">{session.itemName}</p>
+                          {session.topic && (
+                            <p className="text-xs text-gray-400 italic truncate mt-0.5">"{session.topic}"</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <Badge className={`text-[10px] px-2 py-0.5 ${
+                          isToday
+                            ? 'bg-amber-100 text-amber-700'
+                            : isTomorrow
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {isToday ? 'Hari Ini' : isTomorrow ? 'Besok' : formatShortDate(session.date)}
+                        </Badge>
+                        {session.time && (
+                          <p className="text-xs font-medium text-slate-900 mt-1">{session.time} WIB</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action buttons for video sessions */}
+                    {session.itemCategory === 'online-video' && session.meetingLink && (
+                      <div className="mt-3 pt-3 border-t border-gray-200/50">
+                        <Button
+                          size="sm"
+                          className="w-full h-8 text-xs bg-brand-600 hover:bg-brand-700 text-white gap-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(session.meetingLink, '_blank');
+                          }}
+                        >
+                          <Video className="w-3.5 h-3.5" /> Buka Google Meet
+                        </Button>
+                      </div>
+                    )}
+
+                    {session.itemCategory === 'online-chat' && (
+                      <div className="mt-3 pt-3 border-t border-gray-200/50">
+                        <Button
+                          size="sm"
+                          className="w-full h-8 text-xs bg-brand-600 hover:bg-brand-700 text-white gap-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(`/session?bookingId=${session.id}`, '_blank');
+                          }}
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" /> Buka Chat Room
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {upcomingSessions.length > 5 && (
+                <p className="text-xs text-gray-400 text-center pt-2">
+                  +{upcomingSessions.length - 5} sesi lainnya
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Transactions Table Header */}
+      <div className="py-4 px-4 sm:px-6 border-b border-gray-100 bg-white">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900">Riwayat Transaksi</h3>
+            {lastUpdated && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                Terakhir diperbarui: {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
+          </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-2 text-xs flex-1 sm:flex-none border-gray-200"
+              onClick={() => fetchTransactions(true)}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? 'Memuat...' : 'Refresh'}
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs hidden sm:flex border-gray-200">
               <Download className="w-3 h-3" /> Export CSV
             </Button>
           </div>
-        </CardHeader>
+        </div>
+      </div>
 
         {(() => {
           // Include paid transactions AND withdraw requests
+          console.log('🔍 Total transactions before filter:', transactions.length);
+          console.log('🔍 Transactions paymentStatus:', transactions.map(t => ({ id: t.id, paymentStatus: t.paymentStatus, date: t.date })));
+
           const displayTransactions = transactions.filter(t => t.paymentStatus === 'paid' || t.type === 'withdraw');
+          console.log('🔍 Transactions after filter (paid only):', displayTransactions.length);
+
           const visibleTransactions = displayTransactions.slice(0, visibleCount);
           const hasMore = displayTransactions.length > visibleCount;
 
@@ -829,45 +1034,53 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
                   {visibleTransactions.map((transaction) => (
                     <div
                       key={transaction.id}
-                      className="grid grid-cols-1 sm:grid-cols-12 gap-4 px-6 py-4 items-center border-b border-gray-50 hover:bg-gray-50 transition group last:border-none cursor-pointer"
+                      className="px-4 sm:px-6 py-4 border-b border-gray-50 hover:bg-gray-50 transition group last:border-none cursor-pointer"
                       onClick={() => {
                         if (transaction.type !== 'withdraw') {
                           setSelectedTransaction(transaction);
                           navigate(`/expert/dashboard/transaksi/${transaction.id}`);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
                         }
                       }}
                     >
-                      {/* Column 1: User / Withdraw Info */}
-                      <div className="col-span-3 flex items-center gap-3">
-                        {transaction.type === 'withdraw' ? (
-                          <>
-                            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-                              <Banknote className="w-5 h-5 text-orange-600" />
+                      {/* Mobile Layout */}
+                      <div className="sm:hidden space-y-3">
+                        {/* Row 1: User info + Amount */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {transaction.type === 'withdraw' ? (
+                              <div className="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                                <Banknote className="w-4 h-4 text-orange-600" />
+                              </div>
+                            ) : (
+                              <Avatar className={`w-9 h-9 ${getAvatarColor(transaction.userName)} border-none flex-shrink-0`}>
+                                <AvatarFallback className="font-bold text-xs">
+                                  {getInitials(transaction.userName)}
+                                </AvatarFallback>
+                              </Avatar>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-slate-900 truncate">
+                                {transaction.type === 'withdraw' ? 'Tarik Dana' : transaction.userName}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {transaction.type === 'withdraw'
+                                  ? `${transaction.bankName} • ${transaction.accountNumber}`
+                                  : transaction.itemName}
+                              </p>
                             </div>
-                            <div>
-                              <p className="text-sm font-bold text-slate-900">Tarik Dana</p>
-                              <p className="text-xs text-gray-500">{transaction.bankName} • {transaction.accountNumber}</p>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <Avatar className={`w-10 h-10 ${getAvatarColor(transaction.userName)} border-none`}>
-                              <AvatarFallback className="font-bold text-xs">
-                                {getInitials(transaction.userName)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="text-sm font-bold text-slate-900">{transaction.userName}</p>
-                              <p className="text-xs text-gray-500">{transaction.userEmail}</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Column 2: Layanan & Topik (Merged) */}
-                      <div className="col-span-4">
-                        <div className="flex flex-col gap-1">
-                          {/* Nama Layanan */}
+                          </div>
+                          <div className="text-right flex-shrink-0 ml-2">
+                            <p className={`text-sm font-bold ${transaction.type === 'withdraw' ? 'text-orange-600' : 'text-slate-900'}`}>
+                              {transaction.type === 'withdraw' ? '-' : ''}{formatCurrency(transaction.price)}
+                            </p>
+                            <p className="text-[10px] text-gray-400">
+                              {transaction.date ? formatShortDate(transaction.date) : formatShortDate(transaction.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                        {/* Row 2: Status */}
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className={`p-1 rounded-md text-xs ${
                               transaction.type === 'withdraw'
@@ -878,56 +1091,108 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
                             }`}>
                               {getServiceIcon(transaction.itemCategory)}
                             </span>
-                            <p className="text-sm font-bold text-slate-800">{transaction.itemName}</p>
+                            {transaction.topic && (
+                              <p className="text-xs text-gray-500 italic truncate max-w-[180px]">"{transaction.topic}"</p>
+                            )}
                           </div>
-
-                          {/* Topik with connector - only for non-withdraw */}
-                          {transaction.type !== 'withdraw' && (
-                            <div className="flex items-start gap-2 pl-1 relative">
-                              {/* Visual Connector Line */}
-                              <div className="absolute left-[13px] top-[-8px] bottom-1 w-[1px] bg-gray-200"></div>
-
-                              {/* Content */}
-                              <div className="ml-6">
-                                {transaction.topic ? (
-                                  <div className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100 max-w-fit">
-                                    <FileText className="w-3 h-3 text-gray-400" />
-                                    <p className="text-xs text-slate-600 italic line-clamp-1">"{transaction.topic}"</p>
-                                  </div>
-                                ) : (
-                                  <p className="text-[10px] text-gray-400 italic mt-0.5">- Belum ada topik -</p>
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Bank account info for withdraw */}
-                          {transaction.type === 'withdraw' && transaction.accountName && (
-                            <div className="ml-6">
-                              <p className="text-xs text-gray-500">a.n. {transaction.accountName}</p>
-                            </div>
-                          )}
+                          {getStatusBadge(transaction)}
                         </div>
                       </div>
 
-                      {/* Column 3: Date */}
-                      <div className="col-span-1">
-                        <p className="text-xs text-gray-500 font-medium">
-                          {transaction.date ? formatShortDate(transaction.date) : formatShortDate(transaction.createdAt)}
-                        </p>
-                        <p className="text-[10px] text-gray-400">{transaction.time || ''}</p>
-                      </div>
+                      {/* Desktop Layout */}
+                      <div className="hidden sm:grid sm:grid-cols-12 gap-4 items-center">
+                        {/* Column 1: User / Withdraw Info */}
+                        <div className="col-span-3 flex items-center gap-3">
+                          {transaction.type === 'withdraw' ? (
+                            <>
+                              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                                <Banknote className="w-5 h-5 text-orange-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-900">Tarik Dana</p>
+                                <p className="text-xs text-gray-500">{transaction.bankName} • {transaction.accountNumber}</p>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <Avatar className={`w-10 h-10 ${getAvatarColor(transaction.userName)} border-none`}>
+                                <AvatarFallback className="font-bold text-xs">
+                                  {getInitials(transaction.userName)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="text-sm font-bold text-slate-900">{transaction.userName}</p>
+                                <p className="text-xs text-gray-500">{transaction.userEmail}</p>
+                              </div>
+                            </>
+                          )}
+                        </div>
 
-                      {/* Column 4: Amount */}
-                      <div className="col-span-2">
-                        <p className={`text-sm font-bold ${transaction.type === 'withdraw' ? 'text-orange-600' : 'text-slate-900'}`}>
-                          {transaction.type === 'withdraw' ? '-' : ''}{formatCurrency(transaction.price)}
-                        </p>
-                      </div>
+                        {/* Column 2: Layanan & Topik (Merged) */}
+                        <div className="col-span-4">
+                          <div className="flex flex-col gap-1">
+                            {/* Nama Layanan */}
+                            <div className="flex items-center gap-2">
+                              <span className={`p-1 rounded-md text-xs ${
+                                transaction.type === 'withdraw'
+                                  ? 'bg-orange-50 text-orange-600'
+                                  : transaction.itemCategory === 'online-video'
+                                    ? 'bg-blue-50 text-blue-600'
+                                    : 'bg-brand-50 text-brand-600'
+                              }`}>
+                                {getServiceIcon(transaction.itemCategory)}
+                              </span>
+                              <p className="text-sm font-bold text-slate-800">{transaction.itemName}</p>
+                            </div>
 
-                      {/* Column 5: Status */}
-                      <div className="col-span-2 flex justify-center">
-                        {getStatusBadge(transaction)}
+                            {/* Topik with connector - only for non-withdraw */}
+                            {transaction.type !== 'withdraw' && (
+                              <div className="flex items-start gap-2 pl-1 relative">
+                                {/* Visual Connector Line */}
+                                <div className="absolute left-[13px] top-[-8px] bottom-1 w-[1px] bg-gray-200"></div>
+
+                                {/* Content */}
+                                <div className="ml-6">
+                                  {transaction.topic ? (
+                                    <div className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded border border-gray-100 max-w-fit">
+                                      <FileText className="w-3 h-3 text-gray-400" />
+                                      <p className="text-xs text-slate-600 italic line-clamp-1">"{transaction.topic}"</p>
+                                    </div>
+                                  ) : (
+                                    <p className="text-[10px] text-gray-400 italic mt-0.5">- Belum ada topik -</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Bank account info for withdraw */}
+                            {transaction.type === 'withdraw' && transaction.accountName && (
+                              <div className="ml-6">
+                                <p className="text-xs text-gray-500">a.n. {transaction.accountName}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Column 3: Date */}
+                        <div className="col-span-1">
+                          <p className="text-xs text-gray-500 font-medium">
+                            {transaction.date ? formatShortDate(transaction.date) : formatShortDate(transaction.createdAt)}
+                          </p>
+                          <p className="text-[10px] text-gray-400">{transaction.time || ''}</p>
+                        </div>
+
+                        {/* Column 4: Amount */}
+                        <div className="col-span-2">
+                          <p className={`text-sm font-bold ${transaction.type === 'withdraw' ? 'text-orange-600' : 'text-slate-900'}`}>
+                            {transaction.type === 'withdraw' ? '-' : ''}{formatCurrency(transaction.price)}
+                          </p>
+                        </div>
+
+                        {/* Column 5: Status */}
+                        <div className="col-span-2 flex justify-center">
+                          {getStatusBadge(transaction)}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -935,12 +1200,12 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
               </div>
 
               {/* Footer with Load More */}
-              <CardFooter className="bg-gray-50 border-t border-gray-100 p-4 flex flex-col items-center gap-2">
+              <div className="bg-gray-50/50 border-t border-gray-100 p-4 flex flex-col items-center gap-2">
                 {hasMore && (
                   <Button
                     variant="outline"
                     onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
-                    className="text-xs text-gray-500"
+                    className="text-xs text-gray-500 border-gray-200"
                   >
                     Muat Lebih Banyak ({displayTransactions.length - visibleCount} lagi)
                   </Button>
@@ -948,11 +1213,11 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
                 <p className="text-xs text-gray-400">
                   Menampilkan {Math.min(visibleCount, displayTransactions.length)} dari {displayTransactions.length} transaksi
                 </p>
-              </CardFooter>
+              </div>
             </>
           );
         })()}
-      </Card>
+    </div>
 
       {/* Withdraw Dialog */}
       <Dialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
@@ -1047,6 +1312,6 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

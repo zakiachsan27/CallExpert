@@ -195,21 +195,20 @@ export function Header({ transparent = false }: HeaderProps) {
             )}
 
             {!isUserLoggedIn && !isExpertLoggedIn && (
-              <>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start"
+              <div className="flex gap-3 pt-2">
+                <button
                   onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition"
                 >
                   Login
-                </Button>
-                <Button
-                  className="w-full bg-brand-600 hover:bg-brand-700"
+                </button>
+                <button
                   onClick={() => { navigate('/register'); setMobileMenuOpen(false); }}
+                  className="flex-1 py-2.5 px-4 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-md shadow-brand-200 transition"
                 >
                   Daftar Gratis
-                </Button>
-              </>
+                </button>
+              </div>
             )}
           </div>
         </div>

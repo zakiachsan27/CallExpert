@@ -4,12 +4,15 @@
       "private": true,
       "type": "module",
       "dependencies": {
+            "@capacitor/android": "^8.0.0",
             "@capacitor/app": "^8.0.0",
             "@capacitor/cli": "^8.0.0",
             "@capacitor/core": "^8.0.0",
             "@capacitor/haptics": "^8.0.0",
             "@capacitor/local-notifications": "^8.0.0",
+            "@capacitor/preferences": "^8.0.0",
             "@capacitor/push-notifications": "^8.0.0",
+            "@capacitor/splash-screen": "^8.0.0",
             "@capacitor/status-bar": "^8.0.0",
             "@jsr/supabase__supabase-js": "^2.49.8",
             "@radix-ui/react-accordion": "^1.2.3",
@@ -66,6 +69,7 @@
             "postcss": "^8.5.6",
             "tailwindcss": "^4.1.18",
             "tsx": "^4.7.0",
+            "typescript": "^5.9.3",
             "vite": "6.3.5"
       },
       "scripts": {

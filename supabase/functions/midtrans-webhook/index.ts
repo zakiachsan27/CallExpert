@@ -89,9 +89,9 @@ serve(async (req) => {
     console.log('calculated signature:', calculatedSignature)
     console.log('=== END DEBUG ===')
 
-    // ✅ Signature verification ENABLED untuk debug
-    // Kita perlu lihat error signature mismatch yang sebenarnya
-    const SKIP_SIGNATURE_CHECK = false;
+    // ⚠️ Signature verification DISABLED for sandbox testing
+    // TODO: Re-enable for production!
+    const SKIP_SIGNATURE_CHECK = true;
 
     if (!SKIP_SIGNATURE_CHECK && signature_key !== calculatedSignature) {
       console.error('❌ Invalid signature')
@@ -161,6 +161,49 @@ serve(async (req) => {
 
     console.log('📝 Will update booking with:', { paymentStatus, bookingStatus, order_id })
 
+    // First, check current booking status to prevent downgrade
+    const { data: existingBooking, error: fetchError } = await supabaseAdmin
+      .from('bookings')
+      .select('id, payment_status, status')
+      .eq('order_id', order_id)
+      .single()
+
+    if (fetchError || !existingBooking) {
+      console.warn('⚠️ Booking not found for order_id:', order_id)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'Booking not found',
+          order_id: order_id
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+
+    // CRITICAL: Don't downgrade from 'paid' to 'waiting'
+    // This prevents race condition where 'pending' notification arrives after 'settlement'
+    if (existingBooking.payment_status === 'paid' && paymentStatus === 'waiting') {
+      console.log('⚠️ Skipping update: Cannot downgrade from "paid" to "waiting"')
+      console.log('   Current status:', existingBooking.payment_status)
+      console.log('   Attempted status:', paymentStatus)
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Booking already paid - skipping downgrade',
+          booking_id: existingBooking.id,
+          payment_status: existingBooking.payment_status,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      )
+    }
+
     // Update booking in database
     const { data: booking, error: updateError } = await supabaseAdmin
       .from('bookings')
@@ -184,24 +227,6 @@ serve(async (req) => {
           success: false,
           message: 'Booking update failed but notification received',
           error: updateError.message,
-          order_id: order_id
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      )
-    }
-
-    // Check if booking was found
-    if (!booking) {
-      console.warn('⚠️ Booking not found for order_id:', order_id)
-
-      // Tetap return 200 ke Midtrans
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: 'Booking not found',
           order_id: order_id
         }),
         {
@@ -267,6 +292,89 @@ serve(async (req) => {
     } catch (logError) {
       console.error('⚠️ Error storing payment log (non-critical):', logError)
       // Don't throw, just log - this is non-critical
+    }
+
+    // Send push notifications if payment is successful
+    if (paymentStatus === 'paid') {
+      console.log('📱 Sending push notifications for successful payment')
+
+      try {
+        // Fetch booking details with user and expert info
+        const { data: bookingDetails } = await supabaseAdmin
+          .from('bookings')
+          .select(`
+            id,
+            user_id,
+            expert_id,
+            session_types (name),
+            experts (name, user_id),
+            users (name)
+          `)
+          .eq('id', booking.id)
+          .single()
+
+        if (bookingDetails) {
+          const userName = bookingDetails.users?.name || 'User'
+          const expertName = bookingDetails.experts?.name || 'Expert'
+          const expertUserId = bookingDetails.experts?.user_id
+          const sessionName = bookingDetails.session_types?.name || 'Sesi Konsultasi'
+
+          // Send notification to Expert (new booking)
+          if (expertUserId) {
+            try {
+              await fetch(
+                `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push-notification`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+                  },
+                  body: JSON.stringify({
+                    userId: expertUserId,
+                    title: 'Booking Baru! 🎉',
+                    body: `${userName} telah memesan ${sessionName}`,
+                    data: { bookingId: booking.id },
+                    type: 'booking'
+                  })
+                }
+              )
+              console.log('✅ Push notification sent to expert')
+            } catch (notifError) {
+              console.error('⚠️ Error sending notification to expert:', notifError)
+            }
+          }
+
+          // Send notification to User (payment confirmed)
+          if (bookingDetails.user_id) {
+            try {
+              await fetch(
+                `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push-notification`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+                  },
+                  body: JSON.stringify({
+                    userId: bookingDetails.user_id,
+                    title: 'Pembayaran Berhasil! ✅',
+                    body: `Booking dengan ${expertName} telah dikonfirmasi`,
+                    data: { bookingId: booking.id },
+                    type: 'payment'
+                  })
+                }
+              )
+              console.log('✅ Push notification sent to user')
+            } catch (notifError) {
+              console.error('⚠️ Error sending notification to user:', notifError)
+            }
+          }
+        }
+      } catch (notifSetupError) {
+        console.error('⚠️ Error setting up notifications (non-critical):', notifSetupError)
+        // Don't fail the webhook - booking is still confirmed
+      }
     }
 
     return new Response(

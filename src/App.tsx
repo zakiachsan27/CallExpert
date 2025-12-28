@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { AuthProvider } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -18,8 +19,12 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
+// Check if running on native mobile platform (Android/iOS)
+const isNativePlatform = Capacitor.isNativePlatform();
+
 // Log environment info for debugging
 console.log('App loaded successfully with routing');
+console.log('Platform:', Capacitor.getPlatform(), '| Native:', isNativePlatform);
 
 // Export types for use in components
 export type SessionType = {
@@ -29,6 +34,7 @@ export type SessionType = {
   price: number;
   category: 'online-event' | 'online-chat' | 'online-video' | 'offline-event';
   description: string;
+  enabled?: boolean; // Whether this session type is active/visible to mentees
 };
 
 export type DigitalProduct = {
@@ -39,6 +45,7 @@ export type DigitalProduct = {
   downloadLink?: string;
   thumbnail?: string;
   type: 'ebook' | 'course' | 'template' | 'guide' | 'other';
+  enabled?: boolean;
 };
 
 export type Expert = {
@@ -89,6 +96,60 @@ export type Booking = {
 };
 
 function App() {
+  // Native Mobile App (Expert/Mentor Only)
+  if (isNativePlatform) {
+    return (
+      <BrowserRouter>
+        <AuthProvider>
+          <ChatProvider>
+            <Routes>
+              {/* Redirect root to expert login */}
+              <Route path="/" element={<Navigate to="/expert/login" replace />} />
+
+              {/* Expert Login */}
+              <Route path="/expert/login" element={<ExpertLoginPage />} />
+
+              {/* Protected Expert Dashboard Routes */}
+              <Route
+                path="/expert/dashboard"
+                element={
+                  <ProtectedRoute requireExpert>
+                    <ExpertDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/expert/dashboard/*"
+                element={
+                  <ProtectedRoute requireExpert>
+                    <ExpertDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Session/Chat Route for Expert */}
+              <Route
+                path="/session"
+                element={
+                  <ProtectedRoute requireExpert>
+                    <SessionPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Invoice Route */}
+              <Route path="/invoice/:orderId" element={<InvoicePage />} />
+
+              {/* Catch all - redirect to expert login */}
+              <Route path="*" element={<Navigate to="/expert/login" replace />} />
+            </Routes>
+          </ChatProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    );
+  }
+
+  // Web App (Full Features)
   return (
     <BrowserRouter>
       <AuthProvider>
@@ -113,23 +174,23 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route 
-              path="/user/transactions" 
+            <Route
+              path="/user/transactions"
               element={
                 <ProtectedRoute requireUser>
                   <UserTransactionsPage />
                 </ProtectedRoute>
-              } 
+              }
             />
 
             {/* Protected Session Route (Chat) */}
-            <Route 
-              path="/session" 
+            <Route
+              path="/session"
               element={
                 <ProtectedRoute>
                   <SessionPage />
                 </ProtectedRoute>
-              } 
+              }
             />
 
             {/* Protected Expert Routes */}

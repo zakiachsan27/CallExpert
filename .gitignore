@@ -6,3 +6,14 @@ dist
 .env
 .env.local
 nul
+
+# Firebase Service Account (SENSITIVE!)
+*-firebase-adminsdk-*.json
+google-services.json
+
+# Android build artifacts
+android/.gradle
+android/app/build
+android/build
+*.apk
+*.aab

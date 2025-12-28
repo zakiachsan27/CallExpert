@@ -358,7 +358,7 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
       </main>
 
       {/* --- STICKY FOOTER --- */}
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] z-40">
+      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 pb-safe shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] z-40">
         <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
           <div className="flex flex-col">
             <span className="text-xs text-gray-500">Total Pembayaran</span>

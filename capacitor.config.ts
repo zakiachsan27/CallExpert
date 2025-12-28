@@ -1,9 +1,9 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.callexpert.app',
-  appName: 'CallExpert',
-  webDir: 'dist',
+  appId: 'com.mentorinaja.app',
+  appName: 'MentorinAja',
+  webDir: 'build',
   bundledWebRuntime: false,
   plugins: {
     PushNotifications: {
@@ -12,8 +12,19 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 2000,
       backgroundColor: "#4F46E5",
-      showSpinner: false
+      showSpinner: false,
+      androidScaleType: "CENTER_CROP",
+      splashFullScreen: true,
+      splashImmersive: true
+    },
+    LocalNotifications: {
+      smallIcon: "ic_stat_notification",
+      iconColor: "#4F46E5",
+      sound: "notification.wav"
     }
+  },
+  android: {
+    allowMixedContent: true
   }
 };
 

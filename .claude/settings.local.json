@@ -40,7 +40,12 @@
       "Bash(supabase stop:*)",
       "Bash(git pull:*)",
       "Bash(git stash:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(npx cap:*)",
+      "Bash(copy:*)",
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(java:*)"
     ],
     "deny": [],
     "ask": []

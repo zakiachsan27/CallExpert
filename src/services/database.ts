@@ -871,10 +871,47 @@ export async function sendMessage(
       }
       throw error;
     }
+
+    // Trigger push notification in background (don't await to avoid slowing down chat)
+    notifyChatMessage(bookingId, senderId, senderType, messageText).catch(err => {
+      console.warn('Failed to send chat notification:', err);
+    });
+
     return data as ChatMessage;
   } catch (error) {
     console.error('Error sending message:', error);
     throw error;
+  }
+}
+
+/**
+ * Send push notification for new chat message
+ * This is called in background after message is sent
+ */
+async function notifyChatMessage(
+  bookingId: string,
+  senderId: string,
+  senderType: 'user' | 'expert',
+  messageText: string
+): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+
+    const response = await supabase.functions.invoke('notify-chat-message', {
+      body: {
+        bookingId,
+        senderId,
+        senderType,
+        messagePreview: messageText
+      }
+    });
+
+    if (response.error) {
+      console.warn('Chat notification error:', response.error);
+    }
+  } catch (error) {
+    console.warn('Failed to notify chat message:', error);
   }
 }
 

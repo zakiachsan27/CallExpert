@@ -48,3 +48,56 @@ body {
   -webkit-text-fill-color: transparent;
   color: transparent;
 }
+
+/* Safe Area Utilities for Android/iOS navigation bars */
+/* Note: Android WebView doesn't support env(safe-area-inset-bottom) */
+/* We use data-platform attribute set by JavaScript to apply platform-specific padding */
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Fixed bottom elements with safe area */
+.fixed-bottom-safe {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+
+/* Android-specific: Always add bottom padding for navigation bar */
+/* This applies when running in Capacitor Android WebView */
+html[data-platform="android"] .pb-safe {
+  padding-bottom: 48px !important;
+}
+
+html[data-platform="android"] .mb-safe {
+  margin-bottom: 48px !important;
+}
+
+html[data-platform="android"] .fixed-bottom-safe {
+  padding-bottom: 64px !important;
+}
+
+/* iOS uses env() properly, but add fallback just in case */
+html[data-platform="ios"] .pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
+}
+
+html[data-platform="ios"] .mb-safe {
+  margin-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
+}
+
+/* Fallback for @supports not working */
+@supports not (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: 48px;
+  }
+  .mb-safe {
+    margin-bottom: 48px;
+  }
+  .fixed-bottom-safe {
+    padding-bottom: 64px;
+  }
+}

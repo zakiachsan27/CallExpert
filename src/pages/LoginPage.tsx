@@ -166,34 +166,22 @@ export function LoginPage() {
 
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-4 border-t border-gray-50 pt-6 bg-gray-50/50 rounded-b-3xl">
-          <div className="text-center text-sm text-gray-500">
-            Belum punya akun?{" "}
-            <Link to="/register" className="font-bold text-brand-600 hover:underline">
-              Daftar Gratis
+        <CardFooter className="border-t border-gray-100 pt-4 pb-4 bg-gray-50/50 rounded-b-3xl">
+          <p className="text-xs text-gray-500 text-center w-full">
+            Anda seorang Expert?{" "}
+            <Link
+              to="/expert/login"
+              className="font-semibold text-brand-600 hover:text-brand-700 transition"
+            >
+              Klik di sini
             </Link>
-          </div>
-
-          <div className="relative w-full">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-gray-50 px-2 text-gray-400">Atau</span>
-            </div>
-          </div>
-
-          <div className="text-center w-full">
-             <Link to="/expert/login" className="text-xs font-semibold text-gray-500 hover:text-brand-600 transition flex items-center justify-center gap-2">
-               Anda seorang Expert? <span className="text-brand-600">Login di sini</span>
-             </Link>
-          </div>
+          </p>
         </CardFooter>
 
       </Card>
 
-      {/* Footer Copy */}
-      <div className="absolute bottom-6 text-xs text-gray-400 text-center w-full">
+      {/* Footer Copy - Hidden on mobile */}
+      <div className="hidden sm:block absolute bottom-6 text-xs text-gray-400 text-center w-full">
         © 2025 MentorinAja. Secure Login.
       </div>
     </div>

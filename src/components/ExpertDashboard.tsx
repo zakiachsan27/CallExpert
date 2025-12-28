@@ -9,12 +9,12 @@ import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ExpertTransactions } from './ExpertTransactions';
-import { 
-  ArrowLeft, 
-  Save, 
-  User, 
-  Briefcase, 
-  GraduationCap, 
+import {
+  ArrowLeft,
+  Save,
+  User,
+  Briefcase,
+  GraduationCap,
   Award,
   MapPin,
   Calendar,
@@ -32,12 +32,17 @@ import {
   Receipt,
   FileText,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  RefreshCw
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import type { Expert, SessionType, DigitalProduct } from '../App';
 import { projectId } from '../utils/supabase/info.tsx';
 import { isSlugAvailable } from '../services/database';
+
+// Cache keys for sessionStorage
+const PROFILE_CACHE_KEY = 'expert_profile_cache';
+const PROFILE_CACHE_TIMESTAMP_KEY = 'expert_profile_cache_timestamp';
 
 type ExpertDashboardProps = {
   accessToken: string;
@@ -53,6 +58,8 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Basic Info
   const [name, setName] = useState('');
@@ -119,11 +126,28 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
   const [originalData, setOriginalData] = useState<any>(null);
 
   useEffect(() => {
-    fetchExpertProfile();
-    
+    // Try to load from cache first
+    const cachedData = sessionStorage.getItem(PROFILE_CACHE_KEY);
+    const cachedTimestamp = sessionStorage.getItem(PROFILE_CACHE_TIMESTAMP_KEY);
+
+    if (cachedData && cachedTimestamp) {
+      try {
+        const expert = JSON.parse(cachedData);
+        populateFormWithData(expert);
+        setLastUpdated(new Date(cachedTimestamp));
+        setIsLoading(false);
+      } catch (e) {
+        // If cache is corrupted, fetch fresh data
+        fetchExpertProfile();
+      }
+    } else {
+      // No cache, fetch fresh data
+      fetchExpertProfile();
+    }
+
     // Auto set availability to online when dashboard opens
     updateAvailabilityStatus('online');
-    
+
     // Set to offline when component unmounts (user leaves dashboard)
     return () => {
       updateAvailabilityStatus('offline');
@@ -238,7 +262,63 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
     avatarFile, originalData, showOnlyServices
   ]);
 
-  const fetchExpertProfile = async () => {
+  // Helper function to populate form with data
+  const populateFormWithData = (expert: any) => {
+    setName(expert.name || '');
+    setEmail(expert.email || '');
+    setSlug(expert.slug || '');
+    setAvatar(expert.avatar || '');
+    setBio(expert.bio || '');
+    setProgramHighlight(expert.programHighlight || '');
+    setCompany(expert.company || '');
+    setRole(expert.jobTitle || expert.role || '');
+    setExperience(expert.experience || 0);
+    setAvailability(expert.availability || 'offline');
+
+    setLocationCity(expert.location?.city || '');
+    setLocationCountry(expert.location?.country || '');
+    setLocationAddress(expert.location?.address || '');
+
+    setExpertise(expert.expertise || []);
+    setSkills(expert.skills || []);
+    setWorkExperience(expert.workExperience || []);
+    setEducation(expert.education || []);
+    setAchievements(expert.achievements || []);
+    setSessionTypes(expert.sessionTypes || []);
+    setDigitalProducts(expert.digitalProducts || []);
+    setAvailableDays(expert.availableDays || []);
+    setAvailableTimeSlots(expert.availableTimeSlots || []);
+
+    // Store original data for comparison
+    setOriginalData({
+      name: expert.name || '',
+      email: expert.email || '',
+      slug: expert.slug || '',
+      bio: expert.bio || '',
+      programHighlight: expert.programHighlight || '',
+      company: expert.company || '',
+      role: expert.jobTitle || expert.role || '',
+      experience: String(expert.experience || 0),
+      locationCity: expert.location?.city || '',
+      locationCountry: expert.location?.country || '',
+      locationAddress: expert.location?.address || '',
+      expertise: JSON.stringify(expert.expertise || []),
+      skills: JSON.stringify(expert.skills || []),
+      workExperience: JSON.stringify(expert.workExperience || []),
+      education: JSON.stringify(expert.education || []),
+      achievements: JSON.stringify(expert.achievements || []),
+      sessionTypes: JSON.stringify(expert.sessionTypes || []),
+      digitalProducts: JSON.stringify(expert.digitalProducts || []),
+      availableDays: JSON.stringify(expert.availableDays || []),
+      availableTimeSlots: JSON.stringify(expert.availableTimeSlots || []),
+    });
+  };
+
+  const fetchExpertProfile = async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsRefreshing(true);
+    }
+
     try {
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-92eeba71/expert/profile`,
@@ -257,59 +337,20 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
       const expert = data.expert;
 
       // Populate form with existing data
-      setName(expert.name || '');
-      setEmail(expert.email || '');
-      setSlug(expert.slug || '');
-      setAvatar(expert.avatar || '');
-      setBio(expert.bio || '');
-      setProgramHighlight(expert.programHighlight || '');
-      setCompany(expert.company || '');
-      setRole(expert.jobTitle || expert.role || '');
-      setExperience(expert.experience || 0);
-      setAvailability(expert.availability || 'offline');
-      
-      setLocationCity(expert.location?.city || '');
-      setLocationCountry(expert.location?.country || '');
-      setLocationAddress(expert.location?.address || '');
-      
-      setExpertise(expert.expertise || []);
-      setSkills(expert.skills || []);
-      setWorkExperience(expert.workExperience || []);
-      setEducation(expert.education || []);
-      setAchievements(expert.achievements || []);
-      setSessionTypes(expert.sessionTypes || []);
-      setDigitalProducts(expert.digitalProducts || []);
-      setAvailableDays(expert.availableDays || []);
-      setAvailableTimeSlots(expert.availableTimeSlots || []);
-      
-      // Store original data for comparison
-      setOriginalData({
-        name: expert.name || '',
-        email: expert.email || '',
-        slug: expert.slug || '',
-        bio: expert.bio || '',
-        programHighlight: expert.programHighlight || '',
-        company: expert.company || '',
-        role: expert.jobTitle || expert.role || '',
-        experience: String(expert.experience || 0),
-        locationCity: expert.location?.city || '',
-        locationCountry: expert.location?.country || '',
-        locationAddress: expert.location?.address || '',
-        expertise: JSON.stringify(expert.expertise || []),
-        skills: JSON.stringify(expert.skills || []),
-        workExperience: JSON.stringify(expert.workExperience || []),
-        education: JSON.stringify(expert.education || []),
-        achievements: JSON.stringify(expert.achievements || []),
-        sessionTypes: JSON.stringify(expert.sessionTypes || []),
-        digitalProducts: JSON.stringify(expert.digitalProducts || []),
-        availableDays: JSON.stringify(expert.availableDays || []),
-        availableTimeSlots: JSON.stringify(expert.availableTimeSlots || []),
-      });
+      populateFormWithData(expert);
+
+      // Save to cache
+      const now = new Date();
+      sessionStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(expert));
+      sessionStorage.setItem(PROFILE_CACHE_TIMESTAMP_KEY, now.toISOString());
+      setLastUpdated(now);
+
     } catch (err) {
       console.error('Error fetching profile:', err);
       setError('Gagal memuat profil');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -380,7 +421,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-      
+
       // Update originalData to reflect saved state
       setOriginalData({
         name,
@@ -404,7 +445,40 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
         availableDays: JSON.stringify(availableDays),
         availableTimeSlots: JSON.stringify(availableTimeSlots),
       });
-      
+
+      // Update cache with saved data
+      const cachedExpert = {
+        name,
+        email,
+        slug,
+        avatar,
+        bio,
+        programHighlight,
+        company,
+        jobTitle: role,
+        role,
+        experience,
+        availability,
+        location: {
+          city: locationCity,
+          country: locationCountry,
+          address: locationAddress
+        },
+        expertise,
+        skills,
+        workExperience,
+        education,
+        achievements,
+        sessionTypes,
+        digitalProducts,
+        availableDays,
+        availableTimeSlots
+      };
+      const now = new Date();
+      sessionStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(cachedExpert));
+      sessionStorage.setItem(PROFILE_CACHE_TIMESTAMP_KEY, now.toISOString());
+      setLastUpdated(now);
+
       // Reset avatar file after save
       setAvatarFile(null);
       
@@ -638,36 +712,36 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-8">
         {/* Success Message */}
         {saveSuccess && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <p className="text-green-700">Profil berhasil disimpan!</p>
+          <div className="mb-4 md:mb-6 bg-green-50 border border-green-200 rounded-lg p-3 md:p-4 flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+            <p className="text-green-700 text-sm md:text-base">Profil berhasil disimpan!</p>
           </div>
         )}
 
         {/* Error Message */}
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-600">{error}</p>
+          <div className="mb-4 md:mb-6 bg-red-50 border border-red-200 rounded-lg p-3 md:p-4">
+            <p className="text-red-600 text-sm md:text-base">{error}</p>
           </div>
         )}
 
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {/* Basic Information */}
           {!showOnlyServices && (
             <>
               {/* Resume Upload untuk Auto-Fill */}
-              <Card className="p-6 bg-gradient-to-r from-brand-50 to-blue-50 border-brand-200">
-                <div className="flex items-start gap-4">
-                  <FileText className="w-10 h-10 text-brand-600 flex-shrink-0" />
+              <Card className="p-4 md:p-6 bg-gradient-to-r from-brand-50 to-blue-50 border-brand-200">
+                <div className="flex flex-col sm:flex-row items-start gap-3 md:gap-4">
+                  <FileText className="w-8 h-8 md:w-10 md:h-10 text-brand-600 flex-shrink-0" />
                   <div className="flex-1">
-                    <h3 className="mb-2">Upload Resume untuk Auto-Fill</h3>
-                    <p className="text-sm text-gray-600 mb-4">
+                    <h3 className="mb-1 md:mb-2 text-sm md:text-base font-semibold">Upload Resume untuk Auto-Fill</h3>
+                    <p className="text-xs md:text-sm text-gray-600 mb-3 md:mb-4">
                       Upload file resume Anda (PDF/DOCX) dan sistem akan otomatis mengisi seluruh informasi profil.
                     </p>
-                    <div className="flex gap-3 items-center">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:items-center">
                       <label className="cursor-pointer">
                         <input
                           type="file"
@@ -676,9 +750,9 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                           className="hidden"
                           disabled={isParsingResume}
                         />
-                        <Button 
-                          variant="default" 
-                          className="bg-brand-600 hover:bg-brand-700"
+                        <Button
+                          variant="default"
+                          className="bg-brand-600 hover:bg-brand-700 w-full sm:w-auto text-sm"
                           disabled={isParsingResume}
                           asChild
                         >
@@ -686,7 +760,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                             {isParsingResume ? (
                               <>
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Memproses Resume...
+                                Memproses...
                               </>
                             ) : (
                               <>
@@ -698,9 +772,9 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                         </Button>
                       </label>
                       {resumeFile && !isParsingResume && (
-                        <span className="text-sm text-green-600 flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4" />
-                          {resumeFile.name}
+                        <span className="text-xs md:text-sm text-green-600 flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate max-w-[200px]">{resumeFile.name}</span>
                         </span>
                       )}
                     </div>
@@ -708,13 +782,13 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
                 </div>
               </Card>
 
-              <Card className="p-6">
-                <div className="flex items-center gap-2 mb-6">
+              <Card className="p-4 md:p-6">
+                <div className="flex items-center gap-2 mb-4 md:mb-6">
                   <User className="w-5 h-5 text-brand-600" />
-                  <h2>Informasi Dasar</h2>
+                  <h2 className="text-base md:text-lg font-semibold">Informasi Dasar</h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                   <div>
                     <Label htmlFor="name">Nama Lengkap *</Label>
                     <Input
@@ -900,15 +974,15 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
           {/* Expertise */}
           {!showOnlyServices && (
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-6">
+            <Card className="p-4 md:p-6">
+              <div className="flex items-center gap-2 mb-4 md:mb-6">
                 <Award className="w-5 h-5 text-brand-600" />
-                <h2>Keahlian & Expertise</h2>
+                <h2 className="text-base md:text-lg font-semibold">Keahlian & Expertise</h2>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3 md:space-y-4">
                 <div>
-                  <Label>Expertise (akan muncul sebagai tags utama)</Label>
+                  <Label className="text-sm">Expertise (akan muncul sebagai tags utama)</Label>
                   <div className="flex gap-2 mt-2">
                     <Input
                       value={newExpertise}
@@ -1073,14 +1147,14 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
           {/* Education */}
           {!showOnlyServices && (
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-6">
+            <Card className="p-4 md:p-6">
+              <div className="flex items-center gap-2 mb-4 md:mb-6">
                 <GraduationCap className="w-5 h-5 text-brand-600" />
-                <h2>Pendidikan</h2>
+                <h2 className="text-base md:text-lg font-semibold">Pendidikan</h2>
               </div>
 
               <div>
-                <div className="flex gap-2 mb-4">
+                <div className="flex gap-2 mb-3 md:mb-4">
                   <Input
                     value={newEducation}
                     onChange={(e) => setNewEducation(e.target.value)}
@@ -1127,14 +1201,14 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
           {/* Achievements */}
           {!showOnlyServices && (
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-6">
+            <Card className="p-4 md:p-6">
+              <div className="flex items-center gap-2 mb-4 md:mb-6">
                 <Award className="w-5 h-5 text-brand-600" />
-                <h2>Pencapaian & Sertifikasi</h2>
+                <h2 className="text-base md:text-lg font-semibold">Pencapaian & Sertifikasi</h2>
               </div>
 
               <div>
-                <div className="flex gap-2 mb-4">
+                <div className="flex gap-2 mb-3 md:mb-4">
                   <Input
                     value={newAchievement}
                     onChange={(e) => setNewAchievement(e.target.value)}
@@ -1182,6 +1256,27 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
           {/* Session Types */}
           {showOnlyServices && (
             <Card className="p-4 md:p-6">
+              {/* Refresh Header */}
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                <div>
+                  {lastUpdated && (
+                    <p className="text-xs text-gray-400">
+                      Terakhir diperbarui: {lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-2 text-xs"
+                  onClick={() => fetchExpertProfile(true)}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  {isRefreshing ? 'Memuat...' : 'Refresh'}
+                </Button>
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
                 <div className="flex items-center gap-2">
                   <Video className="w-5 h-5 text-brand-600" />
@@ -1353,26 +1448,28 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
           {/* Availability Schedule */}
           {showOnlyServices && (
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-6">
+            <Card className="p-4 md:p-6">
+              <div className="flex items-center gap-2 mb-4 md:mb-6">
                 <Calendar className="w-5 h-5 text-brand-600" />
-                <h2>Jadwal Ketersediaan</h2>
+                <h2 className="text-base md:text-lg font-semibold">Jadwal Ketersediaan</h2>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4 md:space-y-6">
                 {/* Days Selection */}
                 <div>
-                  <Label className="mb-3 block">Hari Tersedia</Label>
-                  <div className="flex flex-wrap gap-2">
+                  <Label className="mb-2 md:mb-3 block text-sm">Hari Tersedia</Label>
+                  <div className="flex flex-wrap gap-1.5 md:gap-2">
                     {(['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'] as const).map((day) => (
                       <Button
                         key={day}
                         type="button"
+                        size="sm"
                         variant={availableDays.includes(day) ? 'default' : 'outline'}
                         onClick={() => toggleDay(day)}
-                        className="capitalize"
+                        className="capitalize text-xs md:text-sm px-2.5 md:px-3 h-8 md:h-9"
                       >
-                        {day}
+                        {day.slice(0, 3)}
+                        <span className="hidden sm:inline">{day.slice(3)}</span>
                       </Button>
                     ))}
                   </div>
@@ -1382,61 +1479,62 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
                 {/* Time Slots Per Day */}
                 <div>
-                  <div className="mb-4">
-                    <Label className="text-base">Jam Ketersediaan</Label>
+                  <div className="mb-3 md:mb-4">
+                    <Label className="text-sm md:text-base">Jam Ketersediaan</Label>
                   </div>
 
                   {/* Show time slots per day */}
-                  <div className="space-y-4">
+                  <div className="space-y-3 md:space-y-4">
                     {availableDays.map((day) => {
                       const daySlots = availableTimeSlots.filter(slot => slot.day === day);
-                      
+
                       return (
-                        <div key={day} className="border rounded-lg p-4 bg-gray-50">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="capitalize">{day}</h4>
+                        <div key={day} className="border rounded-lg p-3 md:p-4 bg-gray-50">
+                          <div className="flex items-center justify-between mb-2 md:mb-3">
+                            <h4 className="capitalize text-sm md:text-base font-medium">{day}</h4>
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
                               onClick={() => addTimeSlot(day)}
+                              className="text-xs h-7 md:h-8 px-2 md:px-3"
                             >
                               <Plus className="w-3 h-3 mr-1" />
-                              Tambah Sesi
+                              <span className="hidden sm:inline">Tambah </span>Sesi
                             </Button>
                           </div>
 
                           <div className="space-y-2">
                             {daySlots.length === 0 && (
-                              <p className="text-sm text-gray-500 text-center py-2">
-                                Belum ada sesi waktu. Klik "Tambah Sesi" untuk menambah.
+                              <p className="text-xs md:text-sm text-gray-500 text-center py-2">
+                                Belum ada sesi waktu.
                               </p>
                             )}
 
                             {availableTimeSlots.map((slot, index) => {
                               if (slot.day !== day) return null;
-                              
+
                               return (
-                                <div key={index} className="flex items-center gap-2 bg-white p-3 rounded border">
-                                  <Clock className="w-4 h-4 text-brand-600 flex-shrink-0" />
+                                <div key={index} className="flex items-center gap-1.5 md:gap-2 bg-white p-2 md:p-3 rounded border">
+                                  <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-brand-600 flex-shrink-0" />
                                   <Input
                                     type="time"
                                     value={slot.start}
                                     onChange={(e) => updateTimeSlot(index, 'start', e.target.value)}
-                                    className="flex-1"
+                                    className="flex-1 h-8 md:h-9 text-xs md:text-sm px-2"
                                   />
-                                  <span className="text-gray-500">-</span>
+                                  <span className="text-gray-400 text-xs">-</span>
                                   <Input
                                     type="time"
                                     value={slot.end}
                                     onChange={(e) => updateTimeSlot(index, 'end', e.target.value)}
-                                    className="flex-1"
+                                    className="flex-1 h-8 md:h-9 text-xs md:text-sm px-2"
                                   />
                                   <button
                                     onClick={() => removeTimeSlot(index)}
-                                    className="text-gray-400 hover:text-red-600 flex-shrink-0"
+                                    className="text-gray-400 hover:text-red-600 flex-shrink-0 p-1"
                                   >
-                                    <X className="w-4 h-4" />
+                                    <X className="w-3.5 h-3.5 md:w-4 md:h-4" />
                                   </button>
                                 </div>
                               );
@@ -1487,7 +1585,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
       {/* Sticky Save Button untuk Tab Mode */}
       {hideHeaderAndNav && hasChanges && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50 pb-safe">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex justify-end gap-4">
               <Button 

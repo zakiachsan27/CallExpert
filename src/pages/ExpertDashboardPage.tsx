@@ -84,7 +84,7 @@ export function ExpertDashboardPage() {
 
   const [originalData, setOriginalData] = useState<any>(null);
 
-  // Dialog states
+  // Dialog states for Sessions
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newSession, setNewSession] = useState({
@@ -95,9 +95,32 @@ export function ExpertDashboardPage() {
     description: ''
   });
 
+  // Dialog states for Digital Products
+  const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
+  const [editingProductIndex, setEditingProductIndex] = useState<number | null>(null);
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    type: 'ebook' as const,
+    price: 0,
+    description: '',
+    downloadLink: ''
+  });
+
+  // Dialog state for Schedule
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+
+  // Profile fields state
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profileCompany, setProfileCompany] = useState('');
+  const [profileRole, setProfileRole] = useState('');
+  const [profileBio, setProfileBio] = useState('');
+  const [profileSkills, setProfileSkills] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState('');
+
   // Lazy load data per tab
   useEffect(() => {
-    if (expertAccessToken && activeTab === 'layanan' && !layananLoaded) {
+    if (expertAccessToken && (activeTab === 'layanan' || activeTab === 'profil') && !layananLoaded) {
       fetchExpertProfile();
     }
   }, [expertAccessToken, activeTab, layananLoaded]);
@@ -111,6 +134,11 @@ export function ExpertDashboardPage() {
       digitalProducts: JSON.stringify(digitalProducts),
       availableDays: JSON.stringify(availableDays),
       availableTimeSlots: JSON.stringify(availableTimeSlots),
+      profileName,
+      profileCompany,
+      profileRole,
+      profileBio,
+      profileSkills: JSON.stringify(profileSkills),
     };
 
     const servicesChanged =
@@ -119,8 +147,15 @@ export function ExpertDashboardPage() {
       currentData.availableDays !== originalData.availableDays ||
       currentData.availableTimeSlots !== originalData.availableTimeSlots;
 
-    setHasChanges(servicesChanged);
-  }, [sessionTypes, digitalProducts, availableDays, availableTimeSlots, originalData]);
+    const profileChanged =
+      currentData.profileName !== originalData.profileName ||
+      currentData.profileCompany !== originalData.profileCompany ||
+      currentData.profileRole !== originalData.profileRole ||
+      currentData.profileBio !== originalData.profileBio ||
+      currentData.profileSkills !== originalData.profileSkills;
+
+    setHasChanges(servicesChanged || profileChanged);
+  }, [sessionTypes, digitalProducts, availableDays, availableTimeSlots, originalData, profileName, profileCompany, profileRole, profileBio, profileSkills]);
 
   const fetchExpertProfile = async () => {
     setIsLoadingLayanan(true);
@@ -146,11 +181,24 @@ export function ExpertDashboardPage() {
       setAvailableDays(expert.availableDays || []);
       setAvailableTimeSlots(expert.availableTimeSlots || []);
 
+      // Set profile fields
+      setProfileName(expert.name || '');
+      setProfileEmail(expert.email || '');
+      setProfileCompany(expert.company || '');
+      setProfileRole(expert.role || '');
+      setProfileBio(expert.bio || '');
+      setProfileSkills(expert.skills || []);
+
       setOriginalData({
         sessionTypes: JSON.stringify(expert.sessionTypes || []),
         digitalProducts: JSON.stringify(expert.digitalProducts || []),
         availableDays: JSON.stringify(expert.availableDays || []),
         availableTimeSlots: JSON.stringify(expert.availableTimeSlots || []),
+        profileName: expert.name || '',
+        profileCompany: expert.company || '',
+        profileRole: expert.role || '',
+        profileBio: expert.bio || '',
+        profileSkills: JSON.stringify(expert.skills || []),
       });
       setLayananLoaded(true);
     } catch (err) {
@@ -171,7 +219,12 @@ export function ExpertDashboardPage() {
         sessionTypes,
         digitalProducts,
         availableDays,
-        availableTimeSlots
+        availableTimeSlots,
+        name: profileName,
+        company: profileCompany,
+        role: profileRole,
+        bio: profileBio,
+        skills: profileSkills
       };
 
       const response = await fetch(
@@ -199,6 +252,11 @@ export function ExpertDashboardPage() {
         digitalProducts: JSON.stringify(digitalProducts),
         availableDays: JSON.stringify(availableDays),
         availableTimeSlots: JSON.stringify(availableTimeSlots),
+        profileName,
+        profileCompany,
+        profileRole,
+        profileBio,
+        profileSkills: JSON.stringify(profileSkills),
       });
 
     } catch (err) {
@@ -267,21 +325,60 @@ export function ExpertDashboardPage() {
     setSessionTypes(sessionTypes.filter((_, i) => i !== index));
   };
 
-  const addDigitalProduct = () => {
-    const newProduct: DigitalProduct = {
+  const handleAddProduct = () => {
+    const product: DigitalProduct = {
       id: `product-${Date.now()}`,
-      name: '',
-      description: '',
-      price: 0,
-      type: 'ebook'
+      name: newProduct.name,
+      description: newProduct.description,
+      price: newProduct.price,
+      type: newProduct.type,
+      downloadLink: newProduct.downloadLink,
+      enabled: true
     };
-    setDigitalProducts([...digitalProducts, newProduct]);
+    setDigitalProducts([...digitalProducts, product]);
+    setNewProduct({
+      name: '',
+      type: 'ebook',
+      price: 0,
+      description: '',
+      downloadLink: ''
+    });
+    setIsAddProductDialogOpen(false);
   };
 
-  const updateDigitalProduct = (index: number, field: string, value: any) => {
-    const updated = [...digitalProducts];
-    updated[index] = { ...updated[index], [field]: value };
-    setDigitalProducts(updated);
+  const handleEditProduct = (index: number) => {
+    setEditingProductIndex(index);
+    const product = digitalProducts[index];
+    setNewProduct({
+      name: product.name,
+      type: product.type,
+      price: product.price,
+      description: product.description,
+      downloadLink: product.downloadLink || ''
+    });
+  };
+
+  const handleUpdateProduct = () => {
+    if (editingProductIndex !== null) {
+      const updated = [...digitalProducts];
+      updated[editingProductIndex] = {
+        ...updated[editingProductIndex],
+        name: newProduct.name,
+        type: newProduct.type,
+        price: newProduct.price,
+        description: newProduct.description,
+        downloadLink: newProduct.downloadLink
+      };
+      setDigitalProducts(updated);
+      setEditingProductIndex(null);
+      setNewProduct({
+        name: '',
+        type: 'ebook',
+        price: 0,
+        description: '',
+        downloadLink: ''
+      });
+    }
   };
 
   const removeDigitalProduct = (index: number) => {
@@ -377,17 +474,18 @@ export function ExpertDashboardPage() {
       </header>
 
       {/* 2. Main Content */}
-      <main className="max-w-5xl mx-auto py-8 px-4">
+      <main className="max-w-5xl mx-auto py-6 sm:py-8 px-4">
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Expert Dashboard</h1>
-            <p className="text-gray-500 mt-1">Kelola profil, layanan, dan pantau transaksi Anda.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Expert Dashboard</h1>
+            <p className="text-gray-500 text-sm sm:text-base mt-1">Kelola profil, layanan, dan pantau transaksi Anda.</p>
           </div>
           <Button
             onClick={handleSave}
             disabled={isSaving || !hasChanges}
-            className="bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-200 gap-2"
+            className="bg-brand-600 hover:bg-brand-700 text-white shadow-md gap-2 h-10"
           >
             {isSaving ? (
               <>
@@ -403,199 +501,271 @@ export function ExpertDashboardPage() {
           </Button>
         </div>
 
-        {/* TABS NAVIGATION */}
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-8">
-          <TabsList className="bg-white border border-gray-200 p-1 h-auto rounded-xl inline-flex shadow-sm w-full sm:w-auto grid grid-cols-3 sm:flex">
-            <TabsTrigger value="transaksi" className="data-[state=active]:bg-brand-50 data-[state=active]:text-brand-700 px-4 sm:px-6 py-2.5 rounded-lg gap-2">
-              <CreditCard className="w-4 h-4" /> <span className="hidden sm:inline">Transaksi</span>
+        {/* TABS NAVIGATION - Clean Design */}
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList className="bg-gray-100/80 p-1 h-auto rounded-lg w-full grid grid-cols-3 mb-6">
+            <TabsTrigger value="transaksi" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm px-3 sm:px-6 py-2.5 rounded-md gap-2 text-xs sm:text-sm font-medium text-gray-600">
+              <CreditCard className="w-4 h-4" /> <span>Transaksi</span>
             </TabsTrigger>
-            <TabsTrigger value="layanan" className="data-[state=active]:bg-brand-50 data-[state=active]:text-brand-700 px-4 sm:px-6 py-2.5 rounded-lg gap-2">
-              <LayoutDashboard className="w-4 h-4" /> <span className="hidden sm:inline">Layanan</span>
+            <TabsTrigger value="layanan" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm px-3 sm:px-6 py-2.5 rounded-md gap-2 text-xs sm:text-sm font-medium text-gray-600">
+              <LayoutDashboard className="w-4 h-4" /> <span>Layanan</span>
             </TabsTrigger>
-            <TabsTrigger value="profil" className="data-[state=active]:bg-brand-50 data-[state=active]:text-brand-700 px-4 sm:px-6 py-2.5 rounded-lg gap-2">
-              <User className="w-4 h-4" /> <span className="hidden sm:inline">Profil</span>
+            <TabsTrigger value="profil" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm px-3 sm:px-6 py-2.5 rounded-md gap-2 text-xs sm:text-sm font-medium text-gray-600">
+              <User className="w-4 h-4" /> <span>Profil</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* ================= TAB 1: PROFIL (LENGKAP) ================= */}
-          <TabsContent value="profil" className="space-y-6 animate-in fade-in-50 duration-500">
+          {/* ================= TAB 1: PROFIL ================= */}
+          <TabsContent value="profil" className="animate-in fade-in-50 duration-300">
+            {/* Unified White Container */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
 
-            {/* Banner Auto-Fill */}
-            <div className="bg-gradient-to-r from-brand-600 to-indigo-600 rounded-2xl p-6 text-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                  <FileText className="w-6 h-6 text-white" />
+              {/* Banner Auto-Fill */}
+              <div className="bg-gradient-to-r from-brand-600 to-indigo-600 px-6 py-5 text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Malas isi manual?</h3>
+                    <p className="text-brand-100 text-sm">Upload CV/LinkedIn PDF kamu, biar AI yang isiin.</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-lg">Malas isi manual?</h3>
-                  <p className="text-brand-100 text-sm opacity-90">Upload CV/LinkedIn PDF kamu, biar AI yang isiin semuanya.</p>
-                </div>
-              </div>
-              <Button variant="secondary" className="bg-white text-brand-700 hover:bg-brand-50 border-none font-bold shadow-none whitespace-nowrap w-full sm:w-auto">
-                <Upload className="w-4 h-4 mr-2" /> Upload Resume
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-              {/* KOLOM KIRI: FOTO & SKILL */}
-              <div className="lg:col-span-1 space-y-6">
-                <Card className="border-gray-200">
-                  <CardHeader>
-                    <CardTitle className="text-base">Foto Profil</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-col items-center">
-                    <div className="relative group cursor-pointer">
-                      <Avatar className="w-32 h-32 border-4 border-white shadow-xl mb-4">
-                        <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Expert" />
-                        <AvatarFallback>EX</AvatarFallback>
-                      </Avatar>
-                      <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition rounded-full">
-                        <span className="text-white text-xs font-bold">Ubah</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-400 text-center">
-                      Format: JPG, PNG. Max 5MB.<br/>Disarankan rasio 1:1.
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-gray-200">
-                  <CardHeader>
-                    <CardTitle className="text-base">Keahlian (Skills)</CardTitle>
-                    <CardDescription>Tag untuk pencarian.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      <Badge variant="secondary" className="bg-brand-50 text-brand-700 hover:bg-brand-100 px-3 py-1 cursor-pointer border border-brand-100">
-                        Product Mgmt <X className="w-3 h-3 ml-1" />
-                      </Badge>
-                      <Badge variant="secondary" className="bg-brand-50 text-brand-700 hover:bg-brand-100 px-3 py-1 cursor-pointer border border-brand-100">
-                        Agile <X className="w-3 h-3 ml-1" />
-                      </Badge>
-                    </div>
-                    <div className="flex gap-2">
-                      <Input placeholder="Tambah skill..." className="h-9 text-sm" />
-                      <Button size="sm" variant="outline" className="h-9"><Plus className="w-4 h-4" /></Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <Button variant="secondary" className="bg-white text-brand-700 hover:bg-brand-50 border-none font-semibold shadow-none whitespace-nowrap">
+                  <Upload className="w-4 h-4 mr-2" /> Upload Resume
+                </Button>
               </div>
 
-              {/* KOLOM KANAN: FORM DETAIL */}
-              <div className="lg:col-span-2 space-y-6">
-                <Card className="border-gray-200">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <User className="w-5 h-5 text-brand-600" /> Informasi Dasar
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Nama Lengkap</Label>
-                        <Input defaultValue="Muhammad Zaki Achsan" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input defaultValue="zaki@bapenda.go.id" disabled className="bg-gray-50 text-gray-500" />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Perusahaan</Label>
-                        <Input defaultValue="Bapenda" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Role / Posisi</Label>
-                        <Input defaultValue="Lead Project Manager" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Bio Singkat</Label>
-                      <Textarea className="h-24" defaultValue="Senior Project Manager dengan pengalaman 8+ tahun di sektor publik dan startup teknologi." />
-                    </div>
-                  </CardContent>
-                </Card>
+              {/* Content Grid */}
+              <div className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
 
-                <Card className="border-gray-200">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Briefcase className="w-5 h-5 text-brand-600" /> Pengalaman Kerja
-                    </CardTitle>
-                    <Button variant="outline" size="sm" className="h-8 gap-1"><Plus className="w-3 h-3" /> Tambah</Button>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="group relative pl-4 border-l-2 border-brand-200">
-                      <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-brand-100 border-2 border-brand-600"></div>
-                      <div className="space-y-2">
-                        <h4 className="font-bold text-sm">Senior Product Manager</h4>
-                        <p className="text-xs text-gray-500">Google Indonesia • 2020 - Sekarang</p>
+                  {/* LEFT COLUMN: Photo & Skills */}
+                  <div className="lg:col-span-1 space-y-6">
+                    {/* Photo Section */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-slate-900 mb-4">Foto Profil</h4>
+                      <div className="flex flex-col items-center">
+                        <div className="relative group cursor-pointer mb-3">
+                          <Avatar className="w-28 h-28 border-4 border-gray-100 shadow-md">
+                            <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Expert" />
+                            <AvatarFallback>EX</AvatarFallback>
+                          </Avatar>
+                          <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                            <span className="text-white text-xs font-semibold">Ubah</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-400 text-center">JPG, PNG. Max 5MB. Rasio 1:1</p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
 
-                <Card className="border-gray-200">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <GraduationCap className="w-5 h-5 text-brand-600" /> Pendidikan
-                    </CardTitle>
-                    <Button variant="outline" size="sm" className="h-8 gap-1"><Plus className="w-3 h-3" /> Tambah</Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                      <h4 className="font-bold text-slate-900 text-sm">Master of Business Administration</h4>
-                      <p className="text-xs text-gray-500">Universitas Gadjah Mada • 2022</p>
+                    <div className="border-t border-gray-100 pt-6">
+                      {/* Skills Section */}
+                      <h4 className="text-sm font-semibold text-slate-900 mb-1">Keahlian</h4>
+                      <p className="text-xs text-gray-500 mb-3">Tag untuk pencarian</p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {profileSkills.map((skill, index) => (
+                          <Badge
+                            key={index}
+                            className="bg-brand-50 text-brand-700 hover:bg-brand-100 px-3 py-1 cursor-pointer text-xs font-medium"
+                            onClick={() => setProfileSkills(profileSkills.filter((_, i) => i !== index))}
+                          >
+                            {skill} <X className="w-3 h-3 ml-1.5" />
+                          </Badge>
+                        ))}
+                        {profileSkills.length === 0 && (
+                          <p className="text-xs text-gray-400 italic">Belum ada skill. Tambahkan skill Anda.</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Tambah skill..."
+                          className="h-9 text-sm"
+                          value={newSkill}
+                          onChange={(e) => setNewSkill(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newSkill.trim()) {
+                              e.preventDefault();
+                              setProfileSkills([...profileSkills, newSkill.trim()]);
+                              setNewSkill('');
+                            }
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-9 px-3"
+                          onClick={() => {
+                            if (newSkill.trim()) {
+                              setProfileSkills([...profileSkills, newSkill.trim()]);
+                              setNewSkill('');
+                            }
+                          }}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+
+                  {/* RIGHT COLUMN: Form Details */}
+                  <div className="lg:col-span-2 space-y-6">
+                    {/* Basic Info */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-4">
+                        <User className="w-4 h-4 text-brand-600" />
+                        <h4 className="text-sm font-semibold text-slate-900">Informasi Dasar</h4>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-gray-600">Nama Lengkap</Label>
+                            <Input
+                              value={profileName}
+                              onChange={(e) => setProfileName(e.target.value)}
+                              placeholder="Nama lengkap"
+                              className="h-10"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-gray-600">Email</Label>
+                            <Input value={profileEmail} disabled className="h-10 bg-gray-50 text-gray-500" />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-gray-600">Perusahaan</Label>
+                            <Input
+                              value={profileCompany}
+                              onChange={(e) => setProfileCompany(e.target.value)}
+                              placeholder="Nama perusahaan"
+                              className="h-10"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs text-gray-600">Role / Posisi</Label>
+                            <Input
+                              value={profileRole}
+                              onChange={(e) => setProfileRole(e.target.value)}
+                              placeholder="Posisi atau jabatan"
+                              className="h-10"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-gray-600">Bio Singkat</Label>
+                          <Textarea
+                            className="h-24 resize-none"
+                            value={profileBio}
+                            onChange={(e) => setProfileBio(e.target.value)}
+                            placeholder="Ceritakan tentang diri Anda, pengalaman, dan keahlian..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-gray-100 pt-6">
+                      {/* Work Experience */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-brand-600" />
+                          <h4 className="text-sm font-semibold text-slate-900">Pengalaman Kerja</h4>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-brand-600 hover:text-brand-700 hover:bg-brand-50">
+                          <Plus className="w-3 h-3" /> Tambah
+                        </Button>
+                      </div>
+                      <div className="pl-4 border-l-2 border-brand-200">
+                        <div className="relative">
+                          <div className="absolute -left-[21px] top-0.5 w-3 h-3 rounded-full bg-brand-100 border-2 border-brand-500"></div>
+                          <h5 className="font-semibold text-sm text-slate-900">Senior Product Manager</h5>
+                          <p className="text-xs text-gray-500">Google Indonesia • 2020 - Sekarang</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-gray-100 pt-6">
+                      {/* Education */}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4 text-brand-600" />
+                          <h4 className="text-sm font-semibold text-slate-900">Pendidikan</h4>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-brand-600 hover:text-brand-700 hover:bg-brand-50">
+                          <Plus className="w-3 h-3" /> Tambah
+                        </Button>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <h5 className="font-semibold text-sm text-slate-900">Master of Business Administration</h5>
+                        <p className="text-xs text-gray-500">Universitas Gadjah Mada • 2022</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </TabsContent>
 
-          {/* ================= TAB 2: LAYANAN (REDESIGNED) ================= */}
-          <TabsContent value="layanan" className="space-y-8 animate-in fade-in-50 duration-500">
+          {/* ================= TAB 2: LAYANAN ================= */}
+          <TabsContent value="layanan" className="animate-in fade-in-50 duration-300">
+            {/* Unified White Container */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
 
-            {/* Loading State */}
-            {isLoadingLayanan && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
-              </div>
-            )}
-
-            {/* Success Message */}
-            {!isLoadingLayanan && saveSuccess && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-                <p className="text-green-700">Perubahan berhasil disimpan!</p>
-              </div>
-            )}
-
-            {/* Error Message */}
-            {!isLoadingLayanan && error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-600">{error}</p>
-              </div>
-            )}
-
-            {/* SECTION 1: KONSULTASI */}
-            {!isLoadingLayanan && <div>
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <Video className="w-5 h-5 text-brand-600" /> Sesi Konsultasi
-                  </h3>
-                  <p className="text-sm text-gray-500">Atur harga dan durasi mentoring 1-on-1.</p>
+              {/* Loading State */}
+              {isLoadingLayanan && (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-8 h-8 animate-spin text-brand-600" />
                 </div>
+              )}
 
-                {/* MODAL TAMBAH SESI */}
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 bg-white hover:bg-gray-50">
-                      <Plus className="w-4 h-4" /> Tambah Sesi
-                    </Button>
-                  </DialogTrigger>
+              {/* Success/Error Messages */}
+              {!isLoadingLayanan && saveSuccess && (
+                <div className="mx-6 mt-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <p className="text-green-700 text-sm">Perubahan berhasil disimpan!</p>
+                </div>
+              )}
+              {!isLoadingLayanan && error && (
+                <div className="mx-6 mt-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
+
+              {/* SECTION 1: SESI KONSULTASI */}
+              {!isLoadingLayanan && (
+                <div className="p-6">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-5">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Video className="w-4 h-4 text-brand-600" />
+                        <h3 className="text-sm font-semibold text-slate-900">Sesi Konsultasi</h3>
+                      </div>
+                      <p className="text-xs text-gray-500">Atur harga dan durasi mentoring 1-on-1.</p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      {/* BUTTON JADWAL */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2 h-9 border-brand-200 text-brand-600 hover:bg-brand-50"
+                        onClick={() => setIsScheduleDialogOpen(true)}
+                      >
+                        <Calendar className="w-4 h-4" />
+                        <span className="hidden sm:inline">Atur Jadwal</span>
+                        <span className="sm:hidden">Jadwal</span>
+                        {availableDays.length > 0 && (
+                          <Badge className="ml-1 bg-brand-100 text-brand-700 text-[10px] px-1.5">{availableDays.length} hari</Badge>
+                        )}
+                      </Button>
+
+                      {/* MODAL TAMBAH SESI */}
+                      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" className="gap-2 bg-brand-600 hover:bg-brand-700 text-white h-9">
+                            <Plus className="w-4 h-4" /> Tambah Sesi
+                          </Button>
+                        </DialogTrigger>
                   <DialogContent className="sm:max-w-[500px] bg-white">
                     <DialogHeader>
                       <DialogTitle>Buat Layanan Baru</DialogTitle>
@@ -670,33 +840,42 @@ export function ExpertDashboardPage() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-              </div>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {sessionTypes.map((session, index) => (
-                  <Card key={session.id} className="border-gray-200 shadow-sm relative overflow-hidden group hover:border-brand-200 transition">
-                    <div className={`absolute top-0 left-0 w-1 h-full ${session.category === 'online-chat' ? 'bg-brand-500' : 'bg-blue-500'}`}></div>
-                    <CardHeader className="flex flex-row items-start justify-between pb-2 pl-6">
-                      <div className="flex gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center mt-1 ${getCategoryColor(session.category)}`}>
-                          {getCategoryIcon(session.category)}
-                        </div>
-                        <div>
-                          <CardTitle className="text-base">{session.name}</CardTitle>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="secondary" className="bg-slate-100 text-slate-600 font-normal">
-                              {session.duration} Menit
-                            </Badge>
-                            <span className="text-sm font-bold text-slate-900">{formatPrice(session.price)}</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {sessionTypes.map((session, index) => (
+                      <div key={session.id} className="bg-gray-50 rounded-lg p-4 relative group hover:bg-gray-100/80 transition">
+                        <div className={`absolute top-0 left-0 w-1 h-full rounded-l-lg ${session.category === 'online-chat' ? 'bg-brand-500' : 'bg-blue-500'}`}></div>
+                        <div className="pl-2">
+                          <div className="flex items-start justify-between">
+                            <div className="flex gap-3">
+                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${getCategoryColor(session.category)}`}>
+                                {getCategoryIcon(session.category)}
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-slate-900">{session.name}</h4>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-xs text-gray-500">{session.duration} menit</span>
+                                  <span className="text-xs text-gray-300">•</span>
+                                  <span className="text-sm font-semibold text-brand-600">{formatPrice(session.price)}</span>
+                                </div>
+                                {session.description && (
+                                  <p className="text-xs text-gray-500 mt-2 line-clamp-2">{session.description}</p>
+                                )}
+                              </div>
+                            </div>
+                            <Switch
+                              id={`session-${index}`}
+                              checked={session.enabled !== false}
+                              onCheckedChange={(checked) => {
+                                const updated = [...sessionTypes];
+                                updated[index] = { ...updated[index], enabled: checked };
+                                setSessionTypes(updated);
+                              }}
+                            />
                           </div>
-                        </div>
-                      </div>
-                      <Switch id={`session-${index}`} defaultChecked />
-                    </CardHeader>
-                    <CardContent className="pl-6 pb-4">
-                      <p className="text-xs text-gray-500 line-clamp-2">{session.description}</p>
-                    </CardContent>
-                    <CardFooter className="bg-gray-50/50 px-6 py-3 flex justify-end gap-2 border-t border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-gray-200/50">
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-red-500" onClick={() => removeSessionType(index)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -775,110 +954,337 @@ export function ExpertDashboardPage() {
                           </DialogFooter>
                         </DialogContent>
                       </Dialog>
-                    </CardFooter>
-                  </Card>
-                ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
 
-                {sessionTypes.length === 0 && (
-                  <div className="col-span-2">
-                    <p className="text-gray-500 text-center py-8">
-                      Belum ada tipe sesi. Klik "Tambah Sesi" untuk menambahkan.
-                    </p>
+                    {sessionTypes.length === 0 && (
+                      <div className="col-span-2 text-center py-8">
+                        <p className="text-gray-500 text-sm">Belum ada tipe sesi. Klik "Tambah Sesi" untuk menambahkan.</p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>}
-
-            {!isLoadingLayanan && <Separator />}
-
-            {/* SECTION 2: JADWAL KETERSEDIAAN */}
-            {!isLoadingLayanan && <Card className="bg-white border border-gray-200 shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Calendar className="w-5 h-5 text-gray-500" /> Atur Jadwal Ketersediaan
-                </CardTitle>
-                <CardDescription>Aktifkan hari dan atur jam spesifik dimana kamu bisa menerima booking.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Header Table */}
-                <div className="hidden sm:grid grid-cols-12 gap-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">
-                  <div className="col-span-3">Hari</div>
-                  <div className="col-span-4">Jam Mulai</div>
-                  <div className="col-span-4">Jam Selesai</div>
-                  <div className="col-span-1 text-center">Status</div>
                 </div>
+              )}
 
-                {/* Day Rows */}
-                {(['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'] as const).map((day) => {
-                  const isActive = availableDays.includes(day);
-                  const daySlot = availableTimeSlots.find(slot => slot.day === day);
+              {/* DIALOG JADWAL KETERSEDIAAN */}
+              <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
+                <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto bg-white">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-brand-600" />
+                      Jadwal Ketersediaan
+                    </DialogTitle>
+                    <DialogDescription>
+                      Aktifkan hari dan tambah sesi waktu untuk menerima booking.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-4">
+                    {(['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'] as const).map((day) => {
+                      const isActive = availableDays.includes(day);
+                      const daySlots = availableTimeSlots.filter(slot => slot.day === day);
 
-                  return (
-                    <div key={day} className={`grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-center p-3 rounded-lg border transition-all ${isActive ? 'bg-white border-gray-200 shadow-sm' : 'bg-gray-50 border-transparent opacity-60'}`}>
-                      {/* Day Name & Toggle */}
-                      <div className="col-span-3 flex items-center justify-between sm:justify-start gap-3">
-                        <span className={`font-bold text-sm capitalize ${isActive ? 'text-slate-900' : 'text-gray-400'}`}>{day}</span>
-                        {/* Mobile Only Toggle */}
-                        <div className="sm:hidden">
-                          <Switch checked={isActive} onCheckedChange={() => {
-                            toggleDay(day);
-                            if (!isActive && !daySlot) {
-                              addTimeSlot(day);
-                            }
-                          }} />
+                      return (
+                        <div key={day} className={`p-3 rounded-lg transition-all ${isActive ? 'bg-brand-50/50 border border-brand-100' : 'bg-gray-50 border border-transparent'}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className={`font-semibold text-sm capitalize ${isActive ? 'text-slate-900' : 'text-gray-400'}`}>{day}</span>
+                            <Switch
+                              checked={isActive}
+                              onCheckedChange={() => {
+                                toggleDay(day);
+                                if (!isActive && daySlots.length === 0) {
+                                  addTimeSlot(day);
+                                }
+                              }}
+                            />
+                          </div>
+
+                          {isActive && (
+                            <div className="space-y-2">
+                              {daySlots.map((slot, slotIdx) => {
+                                const globalIndex = availableTimeSlots.findIndex(s => s === slot);
+                                return (
+                                  <div key={slotIdx} className="flex items-center gap-1.5 bg-white p-2 rounded border border-gray-200">
+                                    <Input
+                                      type="time"
+                                      value={slot.start}
+                                      onChange={(e) => updateTimeSlot(globalIndex, 'start', e.target.value)}
+                                      className="flex-1 h-7 text-xs px-2"
+                                    />
+                                    <span className="text-gray-400 text-xs">-</span>
+                                    <Input
+                                      type="time"
+                                      value={slot.end}
+                                      onChange={(e) => updateTimeSlot(globalIndex, 'end', e.target.value)}
+                                      className="flex-1 h-7 text-xs px-2"
+                                    />
+                                    <button onClick={() => removeTimeSlot(globalIndex)} className="text-gray-400 hover:text-red-500 p-0.5">
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="w-full h-7 text-xs text-brand-600 hover:text-brand-700 hover:bg-brand-50"
+                                onClick={() => addTimeSlot(day)}
+                              >
+                                <Plus className="w-3 h-3 mr-1" /> Tambah Slot
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                      </div>
+                      );
+                    })}
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={() => setIsScheduleDialogOpen(false)} className="bg-brand-600 hover:bg-brand-700 text-white">
+                      Selesai
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
-                      {/* Time Inputs */}
-                      <div className="col-span-4">
-                        <div className="relative">
-                          <Clock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          <Input
-                            type="time"
-                            value={daySlot?.start || '09:00'}
-                            onChange={(e) => {
-                              const slotIndex = availableTimeSlots.findIndex(s => s.day === day);
-                              if (slotIndex !== -1) {
-                                updateTimeSlot(slotIndex, 'start', e.target.value);
-                              }
-                            }}
-                            disabled={!isActive}
-                            className="pl-9 h-9 text-sm bg-white"
-                          />
-                        </div>
+              {/* SECTION 3: PRODUK DIGITAL */}
+              {!isLoadingLayanan && (
+                <div className="border-t border-gray-100 p-6">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-5">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Package className="w-4 h-4 text-brand-600" />
+                        <h3 className="text-sm font-semibold text-slate-900">Produk Digital</h3>
                       </div>
-                      <div className="col-span-4">
-                        <div className="relative">
-                          <Clock className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                          <Input
-                            type="time"
-                            value={daySlot?.end || '17:00'}
-                            onChange={(e) => {
-                              const slotIndex = availableTimeSlots.findIndex(s => s.day === day);
-                              if (slotIndex !== -1) {
-                                updateTimeSlot(slotIndex, 'end', e.target.value);
-                              }
-                            }}
-                            disabled={!isActive}
-                            className="pl-9 h-9 text-sm bg-white"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Desktop Toggle Switch */}
-                      <div className="hidden sm:flex col-span-1 justify-center">
-                        <Switch checked={isActive} onCheckedChange={() => {
-                          toggleDay(day);
-                          if (!isActive && !daySlot) {
-                            addTimeSlot(day);
-                          }
-                        }} />
-                      </div>
+                      <p className="text-xs text-gray-500">Jual e-book, template, course, atau materi digital lainnya.</p>
                     </div>
-                  );
-                })}
-              </CardContent>
-            </Card>}
+
+                    {/* Add Product Dialog */}
+                    <Dialog open={isAddProductDialogOpen} onOpenChange={setIsAddProductDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" className="gap-2 bg-brand-600 hover:bg-brand-700 text-white h-9">
+                          <Plus className="w-4 h-4" /> Tambah Produk
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[500px] bg-white">
+                        <DialogHeader>
+                          <DialogTitle>Tambah Produk Digital</DialogTitle>
+                          <DialogDescription>Tambahkan produk digital untuk dijual kepada mentee.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="product-name" className="text-right">Nama</Label>
+                            <Input
+                              id="product-name"
+                              placeholder="Contoh: Template CV ATS-Friendly"
+                              className="col-span-3"
+                              value={newProduct.name}
+                              onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                            />
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="product-type" className="text-right">Tipe</Label>
+                            <div className="col-span-3">
+                              <Select value={newProduct.type} onValueChange={(value: any) => setNewProduct({...newProduct, type: value})}>
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Pilih Tipe Produk" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white">
+                                  <SelectItem value="ebook">E-Book</SelectItem>
+                                  <SelectItem value="course">Course</SelectItem>
+                                  <SelectItem value="template">Template</SelectItem>
+                                  <SelectItem value="guide">Guide</SelectItem>
+                                  <SelectItem value="other">Lainnya</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="product-price" className="text-right">Harga (Rp)</Label>
+                            <Input
+                              id="product-price"
+                              type="number"
+                              placeholder="50000"
+                              className="col-span-3"
+                              value={newProduct.price}
+                              onChange={(e) => setNewProduct({...newProduct, price: Number(e.target.value)})}
+                            />
+                          </div>
+                          <div className="grid grid-cols-4 items-start gap-4">
+                            <Label htmlFor="product-desc" className="text-right pt-2">Deskripsi</Label>
+                            <Textarea
+                              id="product-desc"
+                              placeholder="Jelaskan isi produk digital Anda..."
+                              className="col-span-3"
+                              value={newProduct.description}
+                              onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
+                            />
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="product-link" className="text-right">Link Download</Label>
+                            <Input
+                              id="product-link"
+                              placeholder="https://drive.google.com/..."
+                              className="col-span-3"
+                              value={newProduct.downloadLink}
+                              onChange={(e) => setNewProduct({...newProduct, downloadLink: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button type="button" onClick={handleAddProduct} className="bg-brand-600 hover:bg-brand-700 text-white">Simpan Produk</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+
+                  {digitalProducts.length === 0 ? (
+                    <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                      <Package className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500 text-sm">Belum ada produk digital.</p>
+                      <p className="text-gray-400 text-xs mt-1">Klik "Tambah Produk" untuk mulai menjual.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {digitalProducts.map((product, index) => (
+                        <div key={product.id} className="bg-gray-50 rounded-lg p-4 relative group hover:bg-gray-100/80 transition">
+                          <div className={`absolute top-0 left-0 w-1 h-full rounded-l-lg ${
+                            product.type === 'ebook' ? 'bg-emerald-500' :
+                            product.type === 'course' ? 'bg-purple-500' :
+                            product.type === 'template' ? 'bg-orange-500' :
+                            product.type === 'guide' ? 'bg-blue-500' : 'bg-gray-400'
+                          }`}></div>
+                          <div className="pl-2">
+                            <div className="flex items-start justify-between">
+                              <div className="flex gap-3">
+                                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                  product.type === 'ebook' ? 'bg-emerald-100' :
+                                  product.type === 'course' ? 'bg-purple-100' :
+                                  product.type === 'template' ? 'bg-orange-100' :
+                                  product.type === 'guide' ? 'bg-blue-100' : 'bg-gray-100'
+                                }`}>
+                                  <FileText className={`w-4 h-4 ${
+                                    product.type === 'ebook' ? 'text-emerald-600' :
+                                    product.type === 'course' ? 'text-purple-600' :
+                                    product.type === 'template' ? 'text-orange-600' :
+                                    product.type === 'guide' ? 'text-blue-600' : 'text-gray-600'
+                                  }`} />
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-semibold text-slate-900">{product.name || 'Produk Tanpa Nama'}</h4>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge className={`text-[10px] px-2 py-0.5 ${
+                                      product.type === 'ebook' ? 'bg-emerald-100 text-emerald-700' :
+                                      product.type === 'course' ? 'bg-purple-100 text-purple-700' :
+                                      product.type === 'template' ? 'bg-orange-100 text-orange-700' :
+                                      product.type === 'guide' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                                    }`}>
+                                      {product.type === 'ebook' ? 'E-Book' :
+                                       product.type === 'course' ? 'Course' :
+                                       product.type === 'template' ? 'Template' :
+                                       product.type === 'guide' ? 'Guide' : 'Lainnya'}
+                                    </Badge>
+                                    <span className="text-xs text-gray-300">•</span>
+                                    <span className="text-sm font-semibold text-brand-600">{formatPrice(product.price)}</span>
+                                  </div>
+                                  {product.description && (
+                                    <p className="text-xs text-gray-500 mt-2 line-clamp-2">{product.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <Switch
+                                id={`product-${index}`}
+                                checked={product.enabled !== false}
+                                onCheckedChange={(checked) => {
+                                  const updated = [...digitalProducts];
+                                  updated[index] = { ...updated[index], enabled: checked };
+                                  setDigitalProducts(updated);
+                                }}
+                              />
+                            </div>
+                            <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-gray-200/50">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-red-500" onClick={() => removeDigitalProduct(index)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+
+                              {/* Modal Edit Product */}
+                              <Dialog open={editingProductIndex === index} onOpenChange={(open) => !open && setEditingProductIndex(null)}>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="sm" className="h-8 gap-2 text-xs" onClick={() => handleEditProduct(index)}>
+                                    <Edit2 className="w-3 h-3" /> Edit
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[500px] bg-white">
+                                  <DialogHeader>
+                                    <DialogTitle>Edit Produk Digital</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="grid gap-4 py-4">
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                      <Label className="text-right">Nama</Label>
+                                      <Input
+                                        value={newProduct.name}
+                                        onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                                        className="col-span-3"
+                                      />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                      <Label className="text-right">Tipe</Label>
+                                      <div className="col-span-3">
+                                        <Select value={newProduct.type} onValueChange={(value: any) => setNewProduct({...newProduct, type: value})}>
+                                          <SelectTrigger className="w-full">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent className="bg-white">
+                                            <SelectItem value="ebook">E-Book</SelectItem>
+                                            <SelectItem value="course">Course</SelectItem>
+                                            <SelectItem value="template">Template</SelectItem>
+                                            <SelectItem value="guide">Guide</SelectItem>
+                                            <SelectItem value="other">Lainnya</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                      <Label className="text-right">Harga</Label>
+                                      <Input
+                                        type="number"
+                                        value={newProduct.price}
+                                        onChange={(e) => setNewProduct({...newProduct, price: Number(e.target.value)})}
+                                        className="col-span-3"
+                                      />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-start gap-4">
+                                      <Label className="text-right pt-2">Deskripsi</Label>
+                                      <Textarea
+                                        value={newProduct.description}
+                                        onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
+                                        className="col-span-3"
+                                      />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                      <Label className="text-right">Link Download</Label>
+                                      <Input
+                                        value={newProduct.downloadLink}
+                                        onChange={(e) => setNewProduct({...newProduct, downloadLink: e.target.value})}
+                                        className="col-span-3"
+                                      />
+                                    </div>
+                                  </div>
+                                  <DialogFooter>
+                                    <Button onClick={handleUpdateProduct} className="bg-brand-600 hover:bg-brand-700 text-white">Update</Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* ================= TAB 3: TRANSAKSI ================= */}
@@ -890,7 +1296,7 @@ export function ExpertDashboardPage() {
 
       {/* Sticky Save Button */}
       {hasChanges && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50 pb-safe">
           <div className="max-w-5xl mx-auto px-4 py-4">
             <div className="flex justify-end gap-4">
               <Button
