@@ -25,6 +25,11 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: true
+  },
+  ios: {
+    contentInset: 'automatic',
+    preferredContentMode: 'mobile',
+    scheme: 'MentorinAja'
   }
 };
 
