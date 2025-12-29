@@ -83,8 +83,8 @@ export function RegisterPage() {
         return;
       }
 
-      // Save token
-      loginAsUser(loginData.session.access_token);
+      // Save token and userId - MUST pass both parameters!
+      await loginAsUser(loginData.session.access_token, loginData.user.id);
       navigate('/', { replace: true });
 
     } catch (err: any) {

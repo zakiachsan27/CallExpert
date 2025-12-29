@@ -50,8 +50,8 @@ export function LoginPage() {
         throw new Error('Email ini tidak terdaftar sebagai User. Silakan login sebagai Expert.');
       }
 
-      // Save token
-      loginAsUser(data.session.access_token);
+      // Save token and userId - MUST pass both parameters!
+      await loginAsUser(data.session.access_token, data.user.id);
 
       // Redirect to return URL or default
       navigate(returnUrl, { replace: true });
