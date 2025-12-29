@@ -67,6 +67,8 @@ export type Expert = {
     country: string;
   };
   availability: 'online' | 'offline';
+  availableNow?: boolean;
+  availableNowUntil?: string;
   digitalProducts?: DigitalProduct[];
   achievements?: string[];
   education?: string[];

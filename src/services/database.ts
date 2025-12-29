@@ -316,6 +316,71 @@ export async function updateExpertProfile(
   }
 }
 
+// Update expert "Available Now" status
+export async function updateExpertAvailableNow(
+  expertId: string,
+  availableNow: boolean,
+  durationMinutes?: number
+): Promise<void> {
+  try {
+    const updateData: { available_now: boolean; available_now_until?: string | null } = {
+      available_now: availableNow,
+    };
+
+    // If turning on and duration is provided, set expiration time
+    if (availableNow && durationMinutes) {
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + durationMinutes);
+      updateData.available_now_until = expiresAt.toISOString();
+    } else if (!availableNow) {
+      // If turning off, clear the expiration
+      updateData.available_now_until = null;
+    }
+
+    const { error } = await supabase
+      .from('experts')
+      .update(updateData)
+      .eq('id', expertId);
+
+    if (error) throw error;
+    console.log(`Expert ${expertId} available_now set to ${availableNow}`);
+  } catch (error) {
+    console.error('Error updating expert available_now status:', error);
+    throw error;
+  }
+}
+
+// Get expert "Available Now" status
+export async function getExpertAvailableNow(expertId: string): Promise<{ availableNow: boolean; availableNowUntil: string | null }> {
+  try {
+    const { data, error } = await supabase
+      .from('experts')
+      .select('available_now, available_now_until')
+      .eq('id', expertId)
+      .single();
+
+    if (error) throw error;
+
+    // Check if availableNow has expired
+    if (data.available_now && data.available_now_until) {
+      const expiresAt = new Date(data.available_now_until);
+      if (expiresAt < new Date()) {
+        // Expired, automatically turn off
+        await updateExpertAvailableNow(expertId, false);
+        return { availableNow: false, availableNowUntil: null };
+      }
+    }
+
+    return {
+      availableNow: data.available_now || false,
+      availableNowUntil: data.available_now_until
+    };
+  } catch (error) {
+    console.error('Error getting expert available_now status:', error);
+    return { availableNow: false, availableNowUntil: null };
+  }
+}
+
 // =============================================
 // EXPERT RELATED DATA OPERATIONS
 // =============================================
@@ -585,7 +650,8 @@ export interface BookingData {
   total_price: number;
   order_id?: string;
   payment_method?: 'credit-card' | 'bank-transfer' | 'e-wallet';
-  meeting_link?: string;
+  meeting_link?: string | null;
+  is_instant?: boolean; // True if this is an instant booking (Konsultasi Sekarang)
 }
 
 /**
@@ -788,15 +854,49 @@ export async function getBookingById(bookingId: string): Promise<any | null> {
 
 export async function createUser(data: { id: string; email: string; name: string }): Promise<void> {
   try {
-    // Use upsert to handle existing users (update name if changed)
+    // First check if user already exists
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', data.id)
+      .single();
+
+    if (existingUser) {
+      // User exists, optionally update name
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ name: data.name })
+        .eq('id', data.id);
+
+      if (updateError) {
+        console.warn('Could not update user name:', updateError.message);
+        // Don't throw - user exists, that's fine
+      }
+      return;
+    }
+
+    // User doesn't exist, create new
     const { error } = await supabase
       .from('users')
-      .upsert(data, { onConflict: 'id' });
+      .insert(data);
 
-    if (error) throw error;
-  } catch (error) {
+    if (error) {
+      // If it's a duplicate key error, ignore it - user already exists
+      if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('conflict')) {
+        console.log('User already exists, skipping create');
+        return;
+      }
+      throw error;
+    }
+  } catch (error: any) {
+    // Don't throw for "user exists" scenarios
+    if (error?.code === '23505' || error?.code === 'PGRST116') {
+      console.log('User already exists or not found scenario, continuing...');
+      return;
+    }
     console.error('Error creating user:', error);
-    throw error;
+    // Don't throw - we don't want to break login just because user creation failed
+    // The user is already authenticated via Supabase Auth
   }
 }
 
@@ -1071,8 +1171,20 @@ export function subscribeToMessages(
   bookingId: string,
   onNewMessage: (message: ChatMessage) => void
 ): ReturnType<typeof supabase.channel> {
+  console.log('🔔 Creating realtime subscription for booking:', bookingId);
+
+  const channelName = `chat-${bookingId}`;
+
+  // Remove any existing channel with the same name first to avoid duplicates
+  const existingChannels = supabase.getChannels();
+  const existingChannel = existingChannels.find(ch => ch.topic === `realtime:${channelName}`);
+  if (existingChannel) {
+    console.log('🔄 Removing existing channel:', channelName);
+    supabase.removeChannel(existingChannel);
+  }
+
   const channel = supabase
-    .channel(`chat-${bookingId}`)
+    .channel(channelName)
     .on(
       'postgres_changes',
       {
@@ -1082,14 +1194,24 @@ export function subscribeToMessages(
         filter: `booking_id=eq.${bookingId}`
       },
       (payload) => {
-        console.log('📨 New message received via realtime:', payload.new);
+        console.log('📨 New message received via realtime:', payload);
+        console.log('📨 Message data:', payload.new);
         onNewMessage(payload.new as ChatMessage);
       }
     )
-    .subscribe((status) => {
+    .subscribe((status, err) => {
       console.log('💬 Chat subscription status:', status);
+      if (err) {
+        console.error('❌ Subscription error:', err);
+      }
       if (status === 'SUBSCRIBED') {
         console.log('✅ Successfully subscribed to chat messages for booking:', bookingId);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('❌ Channel error - realtime subscription failed');
+      } else if (status === 'TIMED_OUT') {
+        console.error('❌ Subscription timed out');
+      } else if (status === 'CLOSED') {
+        console.log('🔒 Channel closed');
       }
     });
 

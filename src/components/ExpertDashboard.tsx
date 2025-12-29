@@ -33,12 +33,13 @@ import {
   FileText,
   Upload,
   Image as ImageIcon,
-  RefreshCw
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import type { Expert, SessionType, DigitalProduct } from '../App';
 import { projectId } from '../utils/supabase/info.tsx';
-import { isSlugAvailable } from '../services/database';
+import { isSlugAvailable, updateExpertAvailableNow, getExpertAvailableNow } from '../services/database';
 
 // Cache keys for sessionStorage
 const PROFILE_CACHE_KEY = 'expert_profile_cache';
@@ -122,6 +123,11 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
     end: string;
   }>>([]);
 
+  // Available Now feature
+  const [availableNow, setAvailableNow] = useState(false);
+  const [availableNowUntil, setAvailableNowUntil] = useState<string | null>(null);
+  const [isTogglingAvailableNow, setIsTogglingAvailableNow] = useState(false);
+
   // Original data for comparison
   const [originalData, setOriginalData] = useState<any>(null);
 
@@ -153,6 +159,20 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
       updateAvailabilityStatus('offline');
     };
   }, []);
+
+  // Fetch available now status
+  useEffect(() => {
+    const fetchAvailableNowStatus = async () => {
+      try {
+        const status = await getExpertAvailableNow(expertId);
+        setAvailableNow(status.availableNow);
+        setAvailableNowUntil(status.availableNowUntil);
+      } catch (error) {
+        console.error('Error fetching available now status:', error);
+      }
+    };
+    fetchAvailableNowStatus();
+  }, [expertId]);
 
   // Check slug availability with debounce
   useEffect(() => {
@@ -552,6 +572,29 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
 
   const removeDigitalProduct = (index: number) => {
     setDigitalProducts(digitalProducts.filter((_, i) => i !== index));
+  };
+
+  // Toggle "Tersedia Sekarang" status
+  const toggleAvailableNow = async (enabled: boolean) => {
+    setIsTogglingAvailableNow(true);
+    try {
+      // Set duration to 2 hours by default when enabling
+      await updateExpertAvailableNow(expertId, enabled, enabled ? 120 : undefined);
+      setAvailableNow(enabled);
+
+      if (enabled) {
+        const expiresAt = new Date();
+        expiresAt.setMinutes(expiresAt.getMinutes() + 120);
+        setAvailableNowUntil(expiresAt.toISOString());
+      } else {
+        setAvailableNowUntil(null);
+      }
+    } catch (error) {
+      console.error('Error toggling available now:', error);
+      setError('Gagal mengubah status ketersediaan');
+    } finally {
+      setIsTogglingAvailableNow(false);
+    }
   };
 
   const toggleDay = (day: 'senin' | 'selasa' | 'rabu' | 'kamis' | 'jumat' | 'sabtu' | 'minggu') => {
@@ -1455,9 +1498,44 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
               </div>
 
               <div className="space-y-4 md:space-y-6">
+                {/* Tersedia Sekarang Toggle */}
+                <div className={`p-4 rounded-xl border-2 transition-all ${availableNow ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${availableNow ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+                        <Zap className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-sm md:text-base">Tersedia Sekarang</h3>
+                        <p className="text-xs text-gray-500">
+                          {availableNow
+                            ? `Aktif hingga ${availableNowUntil ? new Date(availableNowUntil).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '2 jam ke depan'}`
+                            : 'Aktifkan untuk menerima konsultasi langsung'}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={availableNow}
+                      onCheckedChange={toggleAvailableNow}
+                      disabled={isTogglingAvailableNow}
+                      className="data-[state=checked]:bg-green-500"
+                    />
+                  </div>
+                  {availableNow && (
+                    <div className="mt-3 pt-3 border-t border-green-200">
+                      <p className="text-xs text-green-700 flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        Mentee dapat melihat Anda tersedia untuk konsultasi langsung
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
                 {/* Days Selection */}
                 <div>
-                  <Label className="mb-2 md:mb-3 block text-sm">Hari Tersedia</Label>
+                  <Label className="mb-2 md:mb-3 block text-sm">Hari Tersedia (Jadwal Reguler)</Label>
                   <div className="flex flex-wrap gap-1.5 md:gap-2">
                     {(['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'] as const).map((day) => (
                       <Button

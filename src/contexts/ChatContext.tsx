@@ -150,19 +150,27 @@ export function ChatProvider({ children }: ChatProviderProps) {
 
       // Subscribe to new messages
       try {
+        console.log('📡 Setting up message subscription for booking:', bookingId);
         const msgChannel = subscribeToMessages(bookingId, (newMessage) => {
+          console.log('📩 ChatContext received new message:', newMessage);
           setMessages((prev) => {
+            console.log('📩 Current messages count:', prev.length);
             // Remove optimistic message if it exists
             const withoutTemp = prev.filter(m => !m.id.startsWith('temp-'));
             // Add real message only if it doesn't exist
             const exists = withoutTemp.find(m => m.id === newMessage.id);
-            if (exists) return withoutTemp;
+            if (exists) {
+              console.log('📩 Message already exists, skipping');
+              return withoutTemp;
+            }
+            console.log('📩 Adding new message to state');
             return [...withoutTemp, newMessage];
           });
         });
         setMessageChannel(msgChannel);
+        console.log('📡 Message channel created and stored');
       } catch (subErr) {
-        console.warn('Could not subscribe to messages:', subErr);
+        console.error('❌ Could not subscribe to messages:', subErr);
       }
 
       // Subscribe to session status changes

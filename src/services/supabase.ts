@@ -201,6 +201,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: !isNative, // Disable URL detection on native
     storage: isNative ? nativeStorage : webStorage,
     storageKey: 'mentorinaja-auth', // Custom key to avoid conflicts
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
   }
 });
 

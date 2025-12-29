@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Star, Clock, MessageCircle, Video, Users, MapPinned, Loader2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Star, Clock, MessageCircle, Video, Users, MapPinned, Loader2, ChevronDown, Zap } from 'lucide-react';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
@@ -22,6 +22,10 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
   const [topic, setTopic] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isInstantBooking, setIsInstantBooking] = useState(false);
+
+  // Check if expert is available now
+  const expertAvailableNow = expert.availableNow || false;
 
   // Get days in the current month
   const getDaysInMonth = (date: Date) => {
@@ -120,14 +124,17 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
       return;
     }
 
-    if (!selectedDate) {
-      setError('Mohon pilih tanggal booking');
-      return;
-    }
+    // For instant booking, skip date/time validation
+    if (!isInstantBooking) {
+      if (!selectedDate) {
+        setError('Mohon pilih tanggal booking');
+        return;
+      }
 
-    if (!selectedTime) {
-      setError('Mohon pilih waktu booking');
-      return;
+      if (!selectedTime) {
+        setError('Mohon pilih waktu booking');
+        return;
+      }
     }
 
     if (!topic.trim()) {
@@ -139,8 +146,20 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
     setError('');
 
     try {
-      const bookingDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), selectedDate);
-      const bookingDateStr = bookingDate.toISOString().split('T')[0];
+      // For instant booking, use current date and time
+      let bookingDate: Date;
+      let bookingDateStr: string;
+      let bookingTime: string;
+
+      if (isInstantBooking) {
+        bookingDate = new Date();
+        bookingDateStr = bookingDate.toISOString().split('T')[0];
+        bookingTime = bookingDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
+      } else {
+        bookingDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), selectedDate!);
+        bookingDateStr = bookingDate.toISOString().split('T')[0];
+        bookingTime = selectedTime!;
+      }
 
       const timestamp = new Date().getTime();
       const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -151,14 +170,15 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
         expert_id: expert.id,
         session_type_id: sessionType.id,
         booking_date: bookingDateStr,
-        booking_time: selectedTime,
+        booking_time: bookingTime,
         topic: topic.trim(),
         notes: topic.trim(),
         total_price: sessionType.price,
         order_id: orderId,
         meeting_link: sessionType.category === 'online-video'
           ? `https://meet.google.com/${Math.random().toString(36).substring(7)}`
-          : null
+          : null,
+        is_instant: isInstantBooking
       });
 
       const booking: Booking = {
@@ -167,7 +187,7 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
         expert,
         sessionType: sessionType,
         date: bookingDate,
-        time: selectedTime,
+        time: bookingTime,
         topic: topic.trim(),
         notes: topic.trim(),
         totalPrice: sessionType.price,
@@ -185,7 +205,8 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
     }
   };
 
-  const canProceed = selectedDate && selectedTime && topic.trim();
+  // Allow proceeding if instant booking with topic, or regular booking with date/time/topic
+  const canProceed = (isInstantBooking && topic.trim()) || (selectedDate && selectedTime && topic.trim());
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-900 pb-32">
@@ -254,10 +275,52 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
           </div>
         </div>
 
+        {/* --- CARD 2.5: KONSULTASI SEKARANG (if expert available) --- */}
+        {expertAvailableNow && (
+          <div className={`p-5 rounded-2xl border-2 shadow-sm transition-all ${isInstantBooking ? 'bg-green-50 border-green-400' : 'bg-white border-gray-200'}`}>
+            <div className="flex items-start gap-4">
+              <div className={`p-3 rounded-xl ${isInstantBooking ? 'bg-green-500 text-white' : 'bg-green-100 text-green-600'}`}>
+                <Zap className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-bold text-base text-slate-900">Konsultasi Sekarang</h3>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                    ONLINE
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mb-3">
+                  {expert.name} tersedia untuk konsultasi langsung saat ini. Mulai sesi setelah pembayaran dikonfirmasi.
+                </p>
+                <button
+                  onClick={() => {
+                    setIsInstantBooking(!isInstantBooking);
+                    if (!isInstantBooking) {
+                      // Clear scheduled booking selections when switching to instant
+                      setSelectedDate(null);
+                      setSelectedTime(null);
+                    }
+                  }}
+                  className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
+                    isInstantBooking
+                      ? 'bg-green-600 text-white shadow-lg shadow-green-200'
+                      : 'bg-green-50 text-green-700 border-2 border-green-300 hover:bg-green-100'
+                  }`}
+                >
+                  {isInstantBooking ? '✓ Konsultasi Sekarang Dipilih' : 'Pilih Konsultasi Sekarang'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* --- CARD 3: PILIH JADWAL --- */}
-        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+        <div className={`bg-white p-5 rounded-2xl border shadow-sm transition-all ${isInstantBooking ? 'border-gray-100 opacity-50' : 'border-gray-200'}`}>
           <div className="flex justify-between items-center mb-5">
-            <h3 className="font-bold text-sm text-slate-900">Pilih Tanggal & Waktu</h3>
+            <h3 className="font-bold text-sm text-slate-900">
+              {expertAvailableNow ? 'Atau Pilih Jadwal Lain' : 'Pilih Tanggal & Waktu'}
+            </h3>
             <div className="flex items-center gap-2 text-xs font-medium text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
               <span>{monthNames[selectedMonth.getMonth()]} {selectedMonth.getFullYear()}</span>
               <ChevronDown className="w-3 h-3 text-gray-400" />
@@ -329,7 +392,7 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
         </div>
 
         {/* --- CARD 4: TOPIK DISKUSI --- */}
-        {selectedDate && selectedTime && (
+        {(isInstantBooking || (selectedDate && selectedTime)) && (
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
             <Label htmlFor="topic" className="font-bold text-sm text-slate-900 mb-3 block">
               Topik Diskusi <span className="text-red-500">*</span>
@@ -343,7 +406,9 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
               className="w-full border-gray-200 focus:border-brand-400 focus:ring-brand-100 rounded-xl"
             />
             <p className="text-xs text-gray-400 mt-2">
-              Expert akan me-review topik Anda sebelum menerima booking.
+              {isInstantBooking
+                ? 'Jelaskan apa yang ingin Anda diskusikan dalam konsultasi langsung ini.'
+                : 'Expert akan me-review topik Anda sebelum menerima booking.'}
             </p>
           </div>
         )}
@@ -367,12 +432,21 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
           <Button
             onClick={handleBooking}
             disabled={!canProceed || isSubmitting}
-            className="bg-brand-600 text-white font-bold py-3 px-8 rounded-xl hover:bg-brand-700 active:scale-95 transition shadow-lg shadow-brand-200 flex-1 max-w-xs text-sm h-12"
+            className={`text-white font-bold py-3 px-8 rounded-xl active:scale-95 transition shadow-lg flex-1 max-w-xs text-sm h-12 ${
+              isInstantBooking
+                ? 'bg-green-600 hover:bg-green-700 shadow-green-200'
+                : 'bg-brand-600 hover:bg-brand-700 shadow-brand-200'
+            }`}
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Memproses...
+              </>
+            ) : isInstantBooking ? (
+              <>
+                <Zap className="w-4 h-4 mr-2" />
+                Mulai Sekarang
               </>
             ) : (
               'Lanjut Pembayaran'

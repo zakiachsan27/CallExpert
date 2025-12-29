@@ -65,8 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await persistSessionToPreferences(session);
       }
 
-      // Handle session restoration (INITIAL_SESSION, TOKEN_REFRESHED)
-      if ((event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') && session) {
+      // Handle session restoration (INITIAL_SESSION, TOKEN_REFRESHED only)
+      // NOTE: Don't handle SIGNED_IN here - that's handled by loginAsUser/loginAsExpert
+      // SIGNED_IN event fires on manual login, which we already handle in the login functions
+      if ((event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session) {
         // Skip if we're already initializing to avoid duplicate calls
         if (isRestoringSession.current) return;
         isRestoringSession.current = true;
@@ -237,32 +239,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loginAsUser = async (token: string, authUserId: string) => {
-    try {
-      setUserAccessToken(token);
-      setUserId(authUserId);
-      localStorage.setItem('user_access_token', token);
-      localStorage.setItem('user_id', authUserId);
+    // Set auth state first - this is critical and should never fail
+    setUserAccessToken(token);
+    setUserId(authUserId);
+    localStorage.setItem('user_access_token', token);
+    localStorage.setItem('user_id', authUserId);
 
-      // Ensure user exists in users table
+    try {
+      // Try to get user info and create/update user record
       const { data: { user } } = await supabase.auth.getUser(token);
       if (user) {
         const name = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
         setUserName(name);
         localStorage.setItem('user_name', name);
-        await createUser({
-          id: user.id,
-          email: user.email || '',
-          name
-        });
-      }
 
-      // Initialize push notifications and save device token
+        // createUser is now non-throwing, but wrap in try-catch just in case
+        try {
+          await createUser({
+            id: user.id,
+            email: user.email || '',
+            name
+          });
+        } catch (createUserError) {
+          // Log but don't fail login
+          console.warn('Could not create/update user record:', createUserError);
+        }
+      }
+    } catch (error) {
+      // Log but don't fail login - user is already authenticated
+      console.warn('Error getting user info:', error);
+    }
+
+    // Initialize push notifications (non-critical)
+    try {
       if (pushNotificationService.isNativePlatform()) {
         await pushNotificationService.initialize();
       }
-    } catch (error) {
-      console.error('Error in loginAsUser:', error);
-      throw error;
+    } catch (pushError) {
+      console.warn('Error initializing push notifications:', pushError);
     }
   };
 
