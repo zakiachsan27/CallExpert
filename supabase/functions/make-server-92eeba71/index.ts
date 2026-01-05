@@ -208,42 +208,32 @@ app.post("/make-server-92eeba71/expert/signup", async (c) => {
   }
 });
 
-// Expert Profile
+// Expert Profile - OPTIMIZED: Single query + parallel fetches, no blocking KV write
 app.get("/make-server-92eeba71/expert/profile", async (c) => {
   try {
     const { error, user } = await verifyAuth(c.req.header('Authorization'));
-    
+
     if (error || !user) {
       return c.json({ error: error || 'Unauthorized' }, 401);
     }
 
     const supabase = getServiceClient();
 
-    // FIRST: Get expert record by user_id to get the actual expert.id
-    const { data: expertRecord, error: expertError } = await supabase
+    // OPTIMIZED: Single query to get expert data by user_id
+    const { data: dbData, error: dbError } = await supabase
       .from('experts')
-      .select('id')
-      .eq('user_id', user.id);
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
 
-    if (expertError || !expertRecord || expertRecord.length === 0) {
+    if (!dbData || dbError) {
       console.error('Expert record not found for user_id:', user.id);
       return c.json({ error: 'Expert profile not found' }, 404);
     }
 
-    const expertId = expertRecord[0].id;
+    const expertId = dbData.id;
 
-    // Fetch basic profile from public.experts using expert.id
-    const { data: dbData, error: dbError } = await supabase
-      .from('experts')
-      .select('*')
-      .eq('id', expertId)
-      .single();
-
-    if (!dbData || dbError) {
-      return c.json({ error: 'Expert profile not found' }, 404);
-    }
-
-    // Fetch related data from all tables using expertId
+    // Fetch related data from all tables in PARALLEL
     const [
       expertiseResult,
       skillsResult,
@@ -253,17 +243,14 @@ app.get("/make-server-92eeba71/expert/profile", async (c) => {
       sessionTypesResult,
       digitalProductsResult
     ] = await Promise.all([
-      supabase.from('expert_expertise').select('*').eq('expert_id', expertId),
-      supabase.from('expert_skills').select('*').eq('expert_id', expertId),
-      supabase.from('expert_achievements').select('*').eq('expert_id', expertId),
-      supabase.from('expert_education').select('*').eq('expert_id', expertId),
-      supabase.from('expert_work_experience').select('*').eq('expert_id', expertId),
-      supabase.from('session_types').select('*').eq('expert_id', expertId).eq('is_active', true),
-      supabase.from('digital_products').select('*').eq('expert_id', expertId).eq('is_active', true)
+      supabase.from('expert_expertise').select('name').eq('expert_id', expertId),
+      supabase.from('expert_skills').select('name').eq('expert_id', expertId),
+      supabase.from('expert_achievements').select('description').eq('expert_id', expertId),
+      supabase.from('expert_education').select('description').eq('expert_id', expertId),
+      supabase.from('expert_work_experience').select('title, company, period, description').eq('expert_id', expertId),
+      supabase.from('session_types').select('id, name, duration, price, category, description').eq('expert_id', expertId).eq('is_active', true),
+      supabase.from('digital_products').select('id, name, description, price, type, download_link, thumbnail_url').eq('expert_id', expertId).eq('is_active', true)
     ]);
-
-    console.log('📊 Fetched session types:', sessionTypesResult.data?.length || 0);
-    console.log('📊 Fetched digital products:', digitalProductsResult.data?.length || 0);
 
     // Map database columns to API response format
     const expertData = {
@@ -276,6 +263,7 @@ app.get("/make-server-92eeba71/expert/profile", async (c) => {
       programHighlight: dbData.program_highlight,
       company: dbData.company,
       jobTitle: dbData.role,
+      role: dbData.role,
       experience: dbData.experience,
       rating: dbData.rating || 5.0,
       reviewCount: dbData.review_count || 0,
@@ -316,8 +304,8 @@ app.get("/make-server-92eeba71/expert/profile", async (c) => {
       availableHours: { start: '09:00', end: '17:00' }
     };
 
-    // Update KV cache with latest database data
-    await kv.set(`expert:${user.id}`, expertData);
+    // Update KV cache in background (non-blocking) - fire and forget
+    kv.set(`expert:${user.id}`, expertData).catch(() => {});
 
     return c.json({ expert: expertData });
   } catch (error) {
@@ -326,11 +314,11 @@ app.get("/make-server-92eeba71/expert/profile", async (c) => {
   }
 });
 
-// Update Expert Profile
+// Update Expert Profile - OPTIMIZED: All table updates run in PARALLEL
 app.put("/make-server-92eeba71/expert/profile", async (c) => {
   try {
     const { error, user } = await verifyAuth(c.req.header('Authorization'));
-    
+
     if (error || !user) {
       return c.json({ error: error || 'Unauthorized' }, 401);
     }
@@ -338,26 +326,25 @@ app.put("/make-server-92eeba71/expert/profile", async (c) => {
     const updates = await c.req.json();
     const supabase = getServiceClient();
 
-    // FIRST: Get expert record by user_id to get the actual expert.id
+    // Get expert record by user_id
     const { data: expertRecord, error: expertError } = await supabase
       .from('experts')
       .select('id')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .single();
 
-    if (expertError || !expertRecord || expertRecord.length === 0) {
+    if (expertError || !expertRecord) {
       console.error('Expert record not found for user_id:', user.id);
       return c.json({ error: 'Expert profile not found. Please create expert profile first.' }, 404);
     }
 
-    const expertId = expertRecord[0].id;
-    console.log('Found expertId:', expertId, 'for userId:', user.id);
+    const expertId = expertRecord.id;
 
-    // 1. Update basic profile to public.experts
+    // Build basic profile update data
     const expertDataForDB: Record<string, any> = {
       updated_at: new Date().toISOString()
     };
 
-    // Only include fields that are explicitly provided in updates
     if (updates.name !== undefined) expertDataForDB.name = updates.name;
     if (updates.email !== undefined) expertDataForDB.email = updates.email;
     if (updates.slug !== undefined) expertDataForDB.slug = updates.slug;
@@ -366,259 +353,110 @@ app.put("/make-server-92eeba71/expert/profile", async (c) => {
     if (updates.programHighlight !== undefined) expertDataForDB.program_highlight = updates.programHighlight;
     if (updates.company !== undefined) expertDataForDB.company = updates.company;
     if (updates.jobTitle !== undefined) expertDataForDB.role = updates.jobTitle;
+    if (updates.role !== undefined) expertDataForDB.role = updates.role;
     if (updates.experience !== undefined) expertDataForDB.experience = updates.experience;
     if (updates.location?.city !== undefined) expertDataForDB.location_city = updates.location.city;
     if (updates.location?.country !== undefined) expertDataForDB.location_country = updates.location.country;
     if (updates.location?.address !== undefined) expertDataForDB.location_address = updates.location.address;
     if (updates.availability !== undefined) expertDataForDB.availability = updates.availability;
 
-    // Update experts table - use expertId not user.id
-    const { error: dbError } = await supabase
-      .from('experts')
-      .update(expertDataForDB)
-      .eq('id', expertId);
+    // Helper function: delete + insert in single operation
+    const upsertRelatedData = async (
+      tableName: string,
+      data: any[] | undefined,
+      mapFn: (item: any) => Record<string, any>
+    ) => {
+      if (!data || !Array.isArray(data)) return;
 
-    if (dbError) {
-      console.error('Supabase database update error:', dbError);
-      return c.json({ error: `Failed to save profile to database: ${dbError.message}` }, 400);
-    }
+      // Delete old records
+      await supabase.from(tableName).delete().eq('expert_id', expertId);
 
-    // 2. Save expertise to public.expert_expertise
-    if (updates.expertise && Array.isArray(updates.expertise)) {
-      try {
-        // Delete old expertise first
-        await supabase
-          .from('expert_expertise')
-          .delete()
-          .eq('expert_id', expertId);
-
-        // Insert new expertise
-        if (updates.expertise.length > 0) {
-          const expertiseData = updates.expertise.map((item: string) => ({
-            expert_id: expertId,
-            name: item
-          }));
-          const { error: insertError } = await supabase
-            .from('expert_expertise')
-            .insert(expertiseData);
-          
-          if (insertError) {
-            console.error('Error inserting expertise:', insertError);
-          }
-        }
-      } catch (err) {
-        console.error('Error updating expertise:', err);
+      // Insert new records if any
+      if (data.length > 0) {
+        const mappedData = data.map(mapFn);
+        await supabase.from(tableName).insert(mappedData);
       }
-    }
+    };
 
-    // 3. Save skills to public.expert_skills
-    if (updates.skills && Array.isArray(updates.skills)) {
-      try {
-        // Delete old skills first
-        await supabase
-          .from('expert_skills')
-          .delete()
-          .eq('expert_id', expertId);
+    // Run ALL updates in PARALLEL for maximum speed
+    await Promise.all([
+      // 1. Update basic profile
+      supabase.from('experts').update(expertDataForDB).eq('id', expertId),
 
-        // Insert new skills
-        if (updates.skills.length > 0) {
-          const skillsData = updates.skills.map((item: string) => ({
-            expert_id: expertId,
-            name: item
-          }));
-          const { error: insertError } = await supabase
-            .from('expert_skills')
-            .insert(skillsData);
-          
-          if (insertError) {
-            console.error('Error inserting skills:', insertError);
-          }
-        }
-      } catch (err) {
-        console.error('Error updating skills:', err);
-      }
-    }
+      // 2. Update expertise
+      upsertRelatedData('expert_expertise', updates.expertise, (item: string) => ({
+        expert_id: expertId,
+        name: item
+      })),
 
-    // 4. Save education to public.expert_education
-    if (updates.education && Array.isArray(updates.education)) {
-      try {
-        // Delete old education first
-        await supabase
-          .from('expert_education')
-          .delete()
-          .eq('expert_id', expertId);
+      // 3. Update skills
+      upsertRelatedData('expert_skills', updates.skills, (item: string) => ({
+        expert_id: expertId,
+        name: item
+      })),
 
-        // Insert new education
-        if (updates.education.length > 0) {
-          const educationData = updates.education.map((item: string) => ({
-            expert_id: expertId,
-            description: item
-          }));
-          const { error: insertError } = await supabase
-            .from('expert_education')
-            .insert(educationData);
-          
-          if (insertError) {
-            console.error('Error inserting education:', insertError);
-          }
-        }
-      } catch (err) {
-        console.error('Error updating education:', err);
-      }
-    }
+      // 4. Update education
+      upsertRelatedData('expert_education', updates.education, (item: string) => ({
+        expert_id: expertId,
+        description: item
+      })),
 
-    // 5. Save achievements to public.expert_achievements
-    if (updates.achievements && Array.isArray(updates.achievements)) {
-      try {
-        // Delete old achievements first
-        await supabase
-          .from('expert_achievements')
-          .delete()
-          .eq('expert_id', expertId);
+      // 5. Update achievements
+      upsertRelatedData('expert_achievements', updates.achievements, (item: string) => ({
+        expert_id: expertId,
+        description: item
+      })),
 
-        // Insert new achievements
-        if (updates.achievements.length > 0) {
-          const achievementsData = updates.achievements.map((item: string) => ({
-            expert_id: expertId,
-            description: item
-          }));
-          const { error: insertError } = await supabase
-            .from('expert_achievements')
-            .insert(achievementsData);
-          
-          if (insertError) {
-            console.error('Error inserting achievements:', insertError);
-          }
-        }
-      } catch (err) {
-        console.error('Error updating achievements:', err);
-      }
-    }
+      // 6. Update work experience
+      upsertRelatedData('expert_work_experience', updates.workExperience, (item: any) => ({
+        expert_id: expertId,
+        title: item.title || '',
+        company: item.company || '',
+        period: item.period || '',
+        description: item.description || ''
+      })),
 
-    // 6. Save work experience to public.expert_work_experience
-    if (updates.workExperience && Array.isArray(updates.workExperience)) {
-      try {
-        // Delete old work experience first
-        await supabase
-          .from('expert_work_experience')
-          .delete()
-          .eq('expert_id', expertId);
+      // 7. Update session types
+      upsertRelatedData('session_types', updates.sessionTypes, (item: any) => ({
+        expert_id: expertId,
+        name: item.name || '',
+        duration: item.duration || 0,
+        price: item.price || 0,
+        category: item.category || 'online-video',
+        description: item.description || '',
+        is_active: true
+      })),
 
-        // Insert new work experience
-        if (updates.workExperience.length > 0) {
-          const workExpData = updates.workExperience.map((item: any) => ({
-            expert_id: expertId,
-            title: item.title || '',
-            company: item.company || '',
-            period: item.period || '',
-            description: item.description || ''
-          }));
-          const { error: insertError } = await supabase
-            .from('expert_work_experience')
-            .insert(workExpData);
+      // 8. Update digital products
+      upsertRelatedData('digital_products', updates.digitalProducts, (item: any) => ({
+        expert_id: expertId,
+        name: item.name || '',
+        description: item.description || '',
+        price: item.price || 0,
+        type: item.type || 'ebook',
+        download_link: item.downloadLink || null,
+        thumbnail_url: item.thumbnail || null,
+        is_active: true
+      }))
+    ]);
 
-          if (insertError) {
-            console.error('Error inserting work experience:', insertError);
-          }
-        }
-      } catch (err) {
-        console.error('Error updating work experience:', err);
-      }
-    }
-
-    // 7. Save session types to public.session_types
-    if (updates.sessionTypes && Array.isArray(updates.sessionTypes)) {
-      try {
-        console.log('Saving session types:', updates.sessionTypes);
-
-        // Delete old session types first
-        await supabase
-          .from('session_types')
-          .delete()
-          .eq('expert_id', expertId);
-
-        // Insert new session types
-        if (updates.sessionTypes.length > 0) {
-          const sessionTypesData = updates.sessionTypes.map((item: any) => ({
-            expert_id: expertId,
-            name: item.name || '',
-            duration: item.duration || 0,
-            price: item.price || 0,
-            category: item.category || 'online-video',
-            description: item.description || '',
-            is_active: true
-          }));
-          const { error: insertError } = await supabase
-            .from('session_types')
-            .insert(sessionTypesData);
-
-          if (insertError) {
-            console.error('Error inserting session types:', insertError);
-          } else {
-            console.log('Successfully saved session types:', sessionTypesData.length);
-          }
-        }
-      } catch (err) {
-        console.error('Error updating session types:', err);
-      }
-    }
-
-    // 8. Save digital products to public.digital_products
-    if (updates.digitalProducts && Array.isArray(updates.digitalProducts)) {
-      try {
-        console.log('Saving digital products:', updates.digitalProducts);
-
-        // Delete old digital products first
-        await supabase
-          .from('digital_products')
-          .delete()
-          .eq('expert_id', expertId);
-
-        // Insert new digital products
-        if (updates.digitalProducts.length > 0) {
-          const digitalProductsData = updates.digitalProducts.map((item: any) => ({
-            expert_id: expertId,
-            name: item.name || '',
-            description: item.description || '',
-            price: item.price || 0,
-            type: item.type || 'ebook',
-            download_link: item.downloadLink || null,
-            thumbnail_url: item.thumbnail || null,
-            is_active: true
-          }));
-          const { error: insertError } = await supabase
-            .from('digital_products')
-            .insert(digitalProductsData);
-
-          if (insertError) {
-            console.error('Error inserting digital products:', insertError);
-          } else {
-            console.log('Successfully saved digital products:', digitalProductsData.length);
-          }
-        }
-      } catch (err) {
-        console.error('Error updating digital products:', err);
-      }
-    }
-
-    // 9. Also update KV for fast access (backward compatibility)
-    const currentData = await kv.get(`expert:${user.id}`);
+    // Build response data
     const updatedData = {
-      ...currentData,
       ...updates,
       id: expertId,
       user_id: user.id,
       role: 'expert',
       updatedAt: new Date().toISOString()
     };
-    await kv.set(`expert:${user.id}`, updatedData);
+
+    // Update KV cache in background (non-blocking)
+    kv.set(`expert:${user.id}`, updatedData).catch(() => {});
 
     return c.json({
       expert: updatedData,
       expertId: expertId,
       userId: user.id,
-      message: 'Profile saved successfully to database',
-      saved_tables: ['experts', 'expert_expertise', 'expert_skills', 'expert_education', 'expert_achievements', 'expert_work_experience', 'session_types', 'digital_products']
+      message: 'Profile saved successfully to database'
     });
   } catch (error) {
     console.error('Update expert profile error:', error);
