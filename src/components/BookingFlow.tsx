@@ -401,21 +401,24 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
           </div>
 
           {/* TIME SLOTS */}
-          <div className="border-t border-gray-100 pt-5">
-            <h4 className="font-bold text-xs text-gray-400 mb-3 uppercase tracking-wider">Waktu Tersedia</h4>
+          <div className={`border-t border-gray-100 pt-5 ${!selectedDate ? 'opacity-50' : ''}`}>
+            <h4 className="font-bold text-xs text-gray-400 mb-3 uppercase tracking-wider">
+              Waktu Tersedia {!selectedDate && <span className="normal-case font-normal">— Pilih tanggal dulu</span>}
+            </h4>
             <div className="grid grid-cols-3 gap-3">
               {timeSlots.map((time) => {
                 const isTimePast = isPastTime(time);
+                const isDisabled = !selectedDate || isTimePast;
                 return (
                   <button
                     key={time}
-                    onClick={() => !isTimePast && setSelectedTime(time)}
-                    disabled={isTimePast}
+                    onClick={() => !isDisabled && setSelectedTime(time)}
+                    disabled={isDisabled}
                     className={`
                       py-2.5 rounded-xl text-sm font-medium border transition
                       ${selectedTime === time
                         ? 'border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200 font-bold'
-                        : isTimePast
+                        : isDisabled
                         ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed'
                         : 'border-gray-200 text-slate-600 bg-white hover:border-brand-300 hover:text-brand-600'}
                     `}
