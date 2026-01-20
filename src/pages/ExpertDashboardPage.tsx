@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -19,8 +19,11 @@ import {
   Clock,
   MessageCircle,
   Loader2,
-  CheckCircle
+  CheckCircle,
+  Camera
 } from "lucide-react";
+import { uploadAvatar } from "../services/storage";
+import { parseResume, type ParsedResumeData } from "../services/resumeParser";
 
 // Import komponen Shadcn
 import { Button } from "../components/ui/button";
@@ -118,6 +121,39 @@ export function ExpertDashboardPage() {
   const [profileSkills, setProfileSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
 
+  // Avatar state
+  const [profileAvatar, setProfileAvatar] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Work Experience state
+  const [workExperiences, setWorkExperiences] = useState<Array<{
+    title: string;
+    company: string;
+    period: string;
+    description: string;
+  }>>([]);
+  const [isAddWorkExpDialogOpen, setIsAddWorkExpDialogOpen] = useState(false);
+  const [editingWorkExpIndex, setEditingWorkExpIndex] = useState<number | null>(null);
+  const [newWorkExp, setNewWorkExp] = useState({
+    title: '',
+    company: '',
+    period: '',
+    description: ''
+  });
+
+  // Education state
+  const [educations, setEducations] = useState<string[]>([]);
+  const [isAddEducationDialogOpen, setIsAddEducationDialogOpen] = useState(false);
+  const [newEducation, setNewEducation] = useState('');
+
+  // Resume upload state
+  const [isParsingResume, setIsParsingResume] = useState(false);
+  const [resumeFileName, setResumeFileName] = useState('');
+  const resumeInputRef = useRef<HTMLInputElement>(null);
+
   // Lazy load data per tab
   useEffect(() => {
     if (expertAccessToken && (activeTab === 'layanan' || activeTab === 'profil') && !layananLoaded) {
@@ -139,6 +175,9 @@ export function ExpertDashboardPage() {
       profileRole,
       profileBio,
       profileSkills: JSON.stringify(profileSkills),
+      profileAvatar,
+      workExperiences: JSON.stringify(workExperiences),
+      educations: JSON.stringify(educations),
     };
 
     const servicesChanged =
@@ -152,10 +191,14 @@ export function ExpertDashboardPage() {
       currentData.profileCompany !== originalData.profileCompany ||
       currentData.profileRole !== originalData.profileRole ||
       currentData.profileBio !== originalData.profileBio ||
-      currentData.profileSkills !== originalData.profileSkills;
+      currentData.profileSkills !== originalData.profileSkills ||
+      currentData.profileAvatar !== originalData.profileAvatar ||
+      currentData.workExperiences !== originalData.workExperiences ||
+      currentData.educations !== originalData.educations ||
+      avatarFile !== null;
 
     setHasChanges(servicesChanged || profileChanged);
-  }, [sessionTypes, digitalProducts, availableDays, availableTimeSlots, originalData, profileName, profileCompany, profileRole, profileBio, profileSkills]);
+  }, [sessionTypes, digitalProducts, availableDays, availableTimeSlots, originalData, profileName, profileCompany, profileRole, profileBio, profileSkills, profileAvatar, workExperiences, educations, avatarFile]);
 
   const fetchExpertProfile = async () => {
     setIsLoadingLayanan(true);
@@ -188,6 +231,10 @@ export function ExpertDashboardPage() {
       setProfileRole(expert.role || '');
       setProfileBio(expert.bio || '');
       setProfileSkills(expert.skills || []);
+      setProfileAvatar(expert.avatar || '');
+      setAvatarPreview(expert.avatar || '');
+      setWorkExperiences(expert.workExperience || []);
+      setEducations(expert.education || []);
 
       setOriginalData({
         sessionTypes: JSON.stringify(expert.sessionTypes || []),
@@ -199,6 +246,9 @@ export function ExpertDashboardPage() {
         profileRole: expert.role || '',
         profileBio: expert.bio || '',
         profileSkills: JSON.stringify(expert.skills || []),
+        profileAvatar: expert.avatar || '',
+        workExperiences: JSON.stringify(expert.workExperience || []),
+        educations: JSON.stringify(expert.education || []),
       });
       setLayananLoaded(true);
     } catch (err) {
@@ -215,6 +265,19 @@ export function ExpertDashboardPage() {
     setError('');
 
     try {
+      // Upload avatar if new file selected
+      let avatarUrl = profileAvatar;
+      if (avatarFile && expertId) {
+        try {
+          avatarUrl = await uploadAvatar(avatarFile, expertId);
+          setProfileAvatar(avatarUrl);
+          setAvatarFile(null);
+        } catch (uploadErr) {
+          console.error('Error uploading avatar:', uploadErr);
+          throw new Error('Gagal upload foto profil');
+        }
+      }
+
       const updatedProfile = {
         sessionTypes,
         digitalProducts,
@@ -224,7 +287,10 @@ export function ExpertDashboardPage() {
         company: profileCompany,
         role: profileRole,
         bio: profileBio,
-        skills: profileSkills
+        skills: profileSkills,
+        avatar: avatarUrl,
+        workExperience: workExperiences,
+        education: educations
       };
 
       const response = await fetch(
@@ -257,6 +323,9 @@ export function ExpertDashboardPage() {
         profileRole,
         profileBio,
         profileSkills: JSON.stringify(profileSkills),
+        profileAvatar: avatarUrl,
+        workExperiences: JSON.stringify(workExperiences),
+        educations: JSON.stringify(educations),
       });
 
     } catch (err) {
@@ -411,6 +480,120 @@ export function ExpertDashboardPage() {
     setAvailableTimeSlots(availableTimeSlots.filter((_, i) => i !== index));
   };
 
+  // Avatar handlers
+  const handleAvatarClick = () => {
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Ukuran file maksimal 5MB');
+        return;
+      }
+      if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+        setError('Format file harus JPG, PNG, atau WebP');
+        return;
+      }
+
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Work Experience handlers
+  const handleAddWorkExp = () => {
+    if (!newWorkExp.title || !newWorkExp.company) return;
+
+    setWorkExperiences([...workExperiences, { ...newWorkExp }]);
+    setNewWorkExp({ title: '', company: '', period: '', description: '' });
+    setIsAddWorkExpDialogOpen(false);
+  };
+
+  const handleEditWorkExp = (index: number) => {
+    setEditingWorkExpIndex(index);
+    setNewWorkExp({ ...workExperiences[index] });
+  };
+
+  const handleUpdateWorkExp = () => {
+    if (editingWorkExpIndex !== null) {
+      const updated = [...workExperiences];
+      updated[editingWorkExpIndex] = { ...newWorkExp };
+      setWorkExperiences(updated);
+      setEditingWorkExpIndex(null);
+      setNewWorkExp({ title: '', company: '', period: '', description: '' });
+    }
+  };
+
+  const handleRemoveWorkExp = (index: number) => {
+    setWorkExperiences(workExperiences.filter((_, i) => i !== index));
+  };
+
+  // Education handlers
+  const handleAddEducation = () => {
+    if (!newEducation.trim()) return;
+    setEducations([...educations, newEducation.trim()]);
+    setNewEducation('');
+    setIsAddEducationDialogOpen(false);
+  };
+
+  const handleRemoveEducation = (index: number) => {
+    setEducations(educations.filter((_, i) => i !== index));
+  };
+
+  // Resume upload handler
+  const handleResumeClick = () => {
+    resumeInputRef.current?.click();
+  };
+
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      setError('Hanya file PDF yang didukung');
+      return;
+    }
+
+    setIsParsingResume(true);
+    setError('');
+
+    try {
+      const parsedData = await parseResume(file);
+      setResumeFileName(file.name);
+
+      // Auto-fill form fields
+      if (parsedData.name) setProfileName(parsedData.name);
+      if (parsedData.company) setProfileCompany(parsedData.company);
+      if (parsedData.role) setProfileRole(parsedData.role);
+      if (parsedData.bio) setProfileBio(parsedData.bio);
+      if (parsedData.skills && parsedData.skills.length > 0) {
+        setProfileSkills(prev => [...new Set([...prev, ...parsedData.skills])]);
+      }
+      if (parsedData.workExperience && parsedData.workExperience.length > 0) {
+        setWorkExperiences(parsedData.workExperience);
+      }
+      if (parsedData.education && parsedData.education.length > 0) {
+        setEducations(parsedData.education);
+      }
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error('Error parsing resume:', err);
+      setError('Gagal membaca file resume. Pastikan file PDF valid.');
+    } finally {
+      setIsParsingResume(false);
+      // Reset input
+      if (resumeInputRef.current) {
+        resumeInputRef.current.value = '';
+      }
+    }
+  };
+
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'online-chat':
@@ -528,11 +711,33 @@ export function ExpertDashboardPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold">Malas isi manual?</h3>
-                    <p className="text-brand-100 text-sm">Upload CV/LinkedIn PDF kamu, biar AI yang isiin.</p>
+                    <p className="text-brand-100 text-sm">
+                      {resumeFileName ? `✓ ${resumeFileName}` : 'Upload CV/LinkedIn PDF kamu, biar AI yang isiin.'}
+                    </p>
                   </div>
                 </div>
-                <Button variant="secondary" className="bg-white text-brand-700 hover:bg-brand-50 border-none font-semibold shadow-none whitespace-nowrap">
-                  <Upload className="w-4 h-4 mr-2" /> Upload Resume
+                <input
+                  ref={resumeInputRef}
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleResumeUpload}
+                  className="hidden"
+                />
+                <Button
+                  variant="secondary"
+                  className="bg-white text-brand-700 hover:bg-brand-50 border-none font-semibold shadow-none whitespace-nowrap"
+                  onClick={handleResumeClick}
+                  disabled={isParsingResume}
+                >
+                  {isParsingResume ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Memproses...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" /> Upload Resume
+                    </>
+                  )}
                 </Button>
               </div>
 
@@ -546,16 +751,33 @@ export function ExpertDashboardPage() {
                     <div>
                       <h4 className="text-sm font-semibold text-slate-900 mb-4">Foto Profil</h4>
                       <div className="flex flex-col items-center">
-                        <div className="relative group cursor-pointer mb-3">
+                        <input
+                          ref={avatarInputRef}
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/webp"
+                          onChange={handleAvatarChange}
+                          className="hidden"
+                        />
+                        <div
+                          className="relative group cursor-pointer mb-3"
+                          onClick={handleAvatarClick}
+                        >
                           <Avatar className="w-28 h-28 border-4 border-gray-100 shadow-md">
-                            <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Expert" />
-                            <AvatarFallback>EX</AvatarFallback>
+                            <AvatarImage src={avatarPreview || profileAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${profileName || 'Expert'}`} />
+                            <AvatarFallback>{profileName?.charAt(0) || 'EX'}</AvatarFallback>
                           </Avatar>
                           <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                            <span className="text-white text-xs font-semibold">Ubah</span>
+                            <Camera className="w-5 h-5 text-white" />
                           </div>
+                          {avatarFile && (
+                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white">
+                              <CheckCircle className="w-4 h-4 text-white" />
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-400 text-center">JPG, PNG. Max 5MB. Rasio 1:1</p>
+                        <p className="text-xs text-gray-400 text-center">
+                          {avatarFile ? 'Klik Simpan untuk mengupload' : 'JPG, PNG. Max 5MB. Rasio 1:1'}
+                        </p>
                       </div>
                     </div>
 
@@ -671,17 +893,133 @@ export function ExpertDashboardPage() {
                           <Briefcase className="w-4 h-4 text-brand-600" />
                           <h4 className="text-sm font-semibold text-slate-900">Pengalaman Kerja</h4>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-brand-600 hover:text-brand-700 hover:bg-brand-50">
-                          <Plus className="w-3 h-3" /> Tambah
-                        </Button>
+                        <Dialog open={isAddWorkExpDialogOpen} onOpenChange={setIsAddWorkExpDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-brand-600 hover:text-brand-700 hover:bg-brand-50">
+                              <Plus className="w-3 h-3" /> Tambah
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[500px] bg-white">
+                            <DialogHeader>
+                              <DialogTitle>Tambah Pengalaman Kerja</DialogTitle>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="grid grid-cols-4 items-center gap-4">
+                                <Label className="text-right">Jabatan</Label>
+                                <Input
+                                  value={newWorkExp.title}
+                                  onChange={(e) => setNewWorkExp({...newWorkExp, title: e.target.value})}
+                                  placeholder="Senior Product Manager"
+                                  className="col-span-3"
+                                />
+                              </div>
+                              <div className="grid grid-cols-4 items-center gap-4">
+                                <Label className="text-right">Perusahaan</Label>
+                                <Input
+                                  value={newWorkExp.company}
+                                  onChange={(e) => setNewWorkExp({...newWorkExp, company: e.target.value})}
+                                  placeholder="Google Indonesia"
+                                  className="col-span-3"
+                                />
+                              </div>
+                              <div className="grid grid-cols-4 items-center gap-4">
+                                <Label className="text-right">Periode</Label>
+                                <Input
+                                  value={newWorkExp.period}
+                                  onChange={(e) => setNewWorkExp({...newWorkExp, period: e.target.value})}
+                                  placeholder="2020 - Sekarang"
+                                  className="col-span-3"
+                                />
+                              </div>
+                              <div className="grid grid-cols-4 items-start gap-4">
+                                <Label className="text-right pt-2">Deskripsi</Label>
+                                <Textarea
+                                  value={newWorkExp.description}
+                                  onChange={(e) => setNewWorkExp({...newWorkExp, description: e.target.value})}
+                                  placeholder="Deskripsi pekerjaan (opsional)"
+                                  className="col-span-3"
+                                />
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button onClick={handleAddWorkExp} className="bg-brand-600 hover:bg-brand-700 text-white">Simpan</Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       </div>
-                      <div className="pl-4 border-l-2 border-brand-200">
-                        <div className="relative">
-                          <div className="absolute -left-[21px] top-0.5 w-3 h-3 rounded-full bg-brand-100 border-2 border-brand-500"></div>
-                          <h5 className="font-semibold text-sm text-slate-900">Senior Product Manager</h5>
-                          <p className="text-xs text-gray-500">Google Indonesia • 2020 - Sekarang</p>
+
+                      {workExperiences.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">Belum ada pengalaman kerja. Klik Tambah untuk menambahkan.</p>
+                      ) : (
+                        <div className="pl-4 border-l-2 border-brand-200 space-y-4">
+                          {workExperiences.map((exp, index) => (
+                            <div key={index} className="relative group">
+                              <div className="absolute -left-[21px] top-0.5 w-3 h-3 rounded-full bg-brand-100 border-2 border-brand-500"></div>
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <h5 className="font-semibold text-sm text-slate-900">{exp.title}</h5>
+                                  <p className="text-xs text-gray-500">{exp.company} • {exp.period}</p>
+                                  {exp.description && <p className="text-xs text-gray-400 mt-1">{exp.description}</p>}
+                                </div>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                                  <Dialog open={editingWorkExpIndex === index} onOpenChange={(open) => !open && setEditingWorkExpIndex(null)}>
+                                    <DialogTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleEditWorkExp(index)}>
+                                        <Edit2 className="w-3 h-3" />
+                                      </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[500px] bg-white">
+                                      <DialogHeader>
+                                        <DialogTitle>Edit Pengalaman Kerja</DialogTitle>
+                                      </DialogHeader>
+                                      <div className="grid gap-4 py-4">
+                                        <div className="grid grid-cols-4 items-center gap-4">
+                                          <Label className="text-right">Jabatan</Label>
+                                          <Input
+                                            value={newWorkExp.title}
+                                            onChange={(e) => setNewWorkExp({...newWorkExp, title: e.target.value})}
+                                            className="col-span-3"
+                                          />
+                                        </div>
+                                        <div className="grid grid-cols-4 items-center gap-4">
+                                          <Label className="text-right">Perusahaan</Label>
+                                          <Input
+                                            value={newWorkExp.company}
+                                            onChange={(e) => setNewWorkExp({...newWorkExp, company: e.target.value})}
+                                            className="col-span-3"
+                                          />
+                                        </div>
+                                        <div className="grid grid-cols-4 items-center gap-4">
+                                          <Label className="text-right">Periode</Label>
+                                          <Input
+                                            value={newWorkExp.period}
+                                            onChange={(e) => setNewWorkExp({...newWorkExp, period: e.target.value})}
+                                            className="col-span-3"
+                                          />
+                                        </div>
+                                        <div className="grid grid-cols-4 items-start gap-4">
+                                          <Label className="text-right pt-2">Deskripsi</Label>
+                                          <Textarea
+                                            value={newWorkExp.description}
+                                            onChange={(e) => setNewWorkExp({...newWorkExp, description: e.target.value})}
+                                            className="col-span-3"
+                                          />
+                                        </div>
+                                      </div>
+                                      <DialogFooter>
+                                        <Button onClick={handleUpdateWorkExp} className="bg-brand-600 hover:bg-brand-700 text-white">Update</Button>
+                                      </DialogFooter>
+                                    </DialogContent>
+                                  </Dialog>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-600" onClick={() => handleRemoveWorkExp(index)}>
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     <div className="border-t border-gray-100 pt-6">
@@ -691,14 +1029,51 @@ export function ExpertDashboardPage() {
                           <GraduationCap className="w-4 h-4 text-brand-600" />
                           <h4 className="text-sm font-semibold text-slate-900">Pendidikan</h4>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-brand-600 hover:text-brand-700 hover:bg-brand-50">
-                          <Plus className="w-3 h-3" /> Tambah
-                        </Button>
+                        <Dialog open={isAddEducationDialogOpen} onOpenChange={setIsAddEducationDialogOpen}>
+                          <DialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs text-brand-600 hover:text-brand-700 hover:bg-brand-50">
+                              <Plus className="w-3 h-3" /> Tambah
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-[400px] bg-white">
+                            <DialogHeader>
+                              <DialogTitle>Tambah Pendidikan</DialogTitle>
+                            </DialogHeader>
+                            <div className="py-4">
+                              <Label className="text-sm">Pendidikan</Label>
+                              <Input
+                                value={newEducation}
+                                onChange={(e) => setNewEducation(e.target.value)}
+                                placeholder="S1 Teknik Informatika - Universitas Indonesia (2020)"
+                                className="mt-2"
+                              />
+                            </div>
+                            <DialogFooter>
+                              <Button onClick={handleAddEducation} className="bg-brand-600 hover:bg-brand-700 text-white">Simpan</Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       </div>
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <h5 className="font-semibold text-sm text-slate-900">Master of Business Administration</h5>
-                        <p className="text-xs text-gray-500">Universitas Gadjah Mada • 2022</p>
-                      </div>
+
+                      {educations.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">Belum ada pendidikan. Klik Tambah untuk menambahkan.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {educations.map((edu, index) => (
+                            <div key={index} className="bg-gray-50 rounded-lg p-4 flex items-center justify-between group">
+                              <p className="text-sm text-slate-900">{edu}</p>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-red-500 hover:text-red-600 opacity-0 group-hover:opacity-100 transition"
+                                onClick={() => handleRemoveEducation(index)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

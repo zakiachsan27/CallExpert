@@ -23,6 +23,8 @@ export interface ExpertProfile {
   location_country?: string;
   location_address?: string;
   availability: 'online' | 'offline';
+  available_now?: boolean;
+  available_now_until?: string | null;
 }
 
 export interface ExpertWithRelations extends ExpertProfile {
@@ -58,6 +60,19 @@ export interface ExpertWithRelations extends ExpertProfile {
 
 // Convert database expert to App Expert type
 function convertToAppExpert(dbExpert: ExpertWithRelations): Expert {
+  // Check if availableNow has expired
+  let availableNow = dbExpert.available_now || false;
+  let availableNowUntil = dbExpert.available_now_until || null;
+
+  if (availableNow && availableNowUntil) {
+    const expiresAt = new Date(availableNowUntil);
+    if (expiresAt < new Date()) {
+      // Expired - show as not available
+      availableNow = false;
+      availableNowUntil = null;
+    }
+  }
+
   return {
     id: dbExpert.id,
     slug: dbExpert.slug,
@@ -76,6 +91,8 @@ function convertToAppExpert(dbExpert: ExpertWithRelations): Expert {
       country: dbExpert.location_country || ''
     },
     availability: dbExpert.availability,
+    availableNow,
+    availableNowUntil,
     sessionTypes: dbExpert.session_types.map(st => ({
       id: st.id,
       name: st.name,

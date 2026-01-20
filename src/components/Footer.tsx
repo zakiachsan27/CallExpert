@@ -45,7 +45,7 @@ export function Footer() {
           </div>
 
           {/* Links Grid */}
-          <div className="md:w-7/12 grid grid-cols-2 md:grid-cols-3 gap-8">
+          <div className="md:w-7/12 grid grid-cols-2 md:grid-cols-4 gap-8">
             {/* Produk */}
             <div>
               <h4 className="font-bold text-white mb-6 text-sm">Produk</h4>
@@ -80,6 +80,45 @@ export function Footer() {
                     className="hover:text-brand-400 transition"
                   >
                     Webinar
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Artikel */}
+            <div>
+              <h4 className="font-bold text-white mb-6 text-sm">Artikel</h4>
+              <ul className="space-y-4 text-sm text-slate-400">
+                <li>
+                  <button
+                    onClick={() => navigate('/artikel')}
+                    className="hover:text-brand-400 transition"
+                  >
+                    Semua Artikel
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => navigate('/artikel?category=karir')}
+                    className="hover:text-brand-400 transition"
+                  >
+                    Tips Karir
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => navigate('/artikel?category=interview')}
+                    className="hover:text-brand-400 transition"
+                  >
+                    Interview
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => navigate('/artikel?category=cv-resume')}
+                    className="hover:text-brand-400 transition"
+                  >
+                    CV & Resume
                   </button>
                 </li>
               </ul>

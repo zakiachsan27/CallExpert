@@ -11,7 +11,7 @@ export function BookingPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isUserLoggedIn } = useAuth();
+  const { userId, isLoading: isAuthLoading } = useAuth();
 
   const [expert, setExpert] = useState<Expert | null>(null);
   const [selectedSessionType, setSelectedSessionType] = useState<SessionType | null>(null);
@@ -23,8 +23,13 @@ export function BookingPage() {
   const sessionTypeId = (location.state as any)?.sessionTypeId;
 
   useEffect(() => {
-    // Check if user is logged in
-    if (!isUserLoggedIn) {
+    // Wait for auth to finish loading
+    if (isAuthLoading) {
+      return;
+    }
+
+    // Check if user is logged in (either as user or expert - both have userId)
+    if (!userId) {
       // Redirect to login with return URL
       navigate('/login', {
         state: {
@@ -36,7 +41,7 @@ export function BookingPage() {
     }
 
     fetchExpertAndSession();
-  }, [slug, sessionTypeId, isUserLoggedIn]);
+  }, [slug, sessionTypeId, userId, isAuthLoading]);
 
   const fetchExpertAndSession = async () => {
     setIsLoading(true);
@@ -93,7 +98,7 @@ export function BookingPage() {
     navigate('/');
   };
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-brand-600" />

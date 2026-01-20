@@ -77,6 +77,30 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
     return checkDate.getDay() === 0;
   };
 
+  // Check if time slot is in the past for today
+  const isPastTime = (time: string) => {
+    if (!selectedDate) return false;
+
+    // Only check if selected date is today
+    const selectedDateObj = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), selectedDate);
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    if (selectedDateObj.getTime() !== todayStart.getTime()) {
+      return false; // Not today, all times are valid
+    }
+
+    // Parse the time slot (e.g., "09:00")
+    const [hours, minutes] = time.split(':').map(Number);
+    const slotTime = new Date();
+    slotTime.setHours(hours, minutes, 0, 0);
+
+    // Add a small buffer (e.g., can't book within 30 minutes of current time)
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 30);
+
+    return slotTime <= now;
+  };
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -133,6 +157,13 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
 
       if (!selectedTime) {
         setError('Mohon pilih waktu booking');
+        return;
+      }
+
+      // Check if selected time is in the past (for today's bookings)
+      if (isPastTime(selectedTime)) {
+        setError('Jam booking yang dipilih sudah lewat. Silakan pilih jam yang lain.');
+        setSelectedTime(null);
         return;
       }
     }
@@ -373,20 +404,26 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
           <div className="border-t border-gray-100 pt-5">
             <h4 className="font-bold text-xs text-gray-400 mb-3 uppercase tracking-wider">Waktu Tersedia</h4>
             <div className="grid grid-cols-3 gap-3">
-              {timeSlots.map((time) => (
-                <button
-                  key={time}
-                  onClick={() => setSelectedTime(time)}
-                  className={`
-                    py-2.5 rounded-xl text-sm font-medium border transition
-                    ${selectedTime === time
-                      ? 'border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200 font-bold'
-                      : 'border-gray-200 text-slate-600 bg-white hover:border-brand-300 hover:text-brand-600'}
-                  `}
-                >
-                  {time}
-                </button>
-              ))}
+              {timeSlots.map((time) => {
+                const isTimePast = isPastTime(time);
+                return (
+                  <button
+                    key={time}
+                    onClick={() => !isTimePast && setSelectedTime(time)}
+                    disabled={isTimePast}
+                    className={`
+                      py-2.5 rounded-xl text-sm font-medium border transition
+                      ${selectedTime === time
+                        ? 'border-brand-600 bg-brand-600 text-white shadow-md shadow-brand-200 font-bold'
+                        : isTimePast
+                        ? 'border-gray-100 text-gray-300 bg-gray-50 cursor-not-allowed'
+                        : 'border-gray-200 text-slate-600 bg-white hover:border-brand-300 hover:text-brand-600'}
+                    `}
+                  >
+                    {time}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

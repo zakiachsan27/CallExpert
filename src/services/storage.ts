@@ -73,10 +73,41 @@ export async function uploadProductImage(file: File, productId: string): Promise
 }
 
 // =============================================
+// ARTICLE IMAGE OPERATIONS
+// =============================================
+
+export async function uploadArticleImage(file: File, articleId: string): Promise<string> {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${articleId}/${Date.now()}.${fileExt}`;
+
+    // Upload article image
+    const { data, error } = await supabase.storage
+      .from('article-images')
+      .upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (error) throw error;
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('article-images')
+      .getPublicUrl(fileName);
+
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error('Error uploading article image:', error);
+    throw error;
+  }
+}
+
+// =============================================
 // DELETE OPERATIONS
 // =============================================
 
-export async function deleteFile(bucket: 'avatars' | 'product-images', path: string): Promise<void> {
+export async function deleteFile(bucket: 'avatars' | 'product-images' | 'article-images', path: string): Promise<void> {
   try {
     const { error } = await supabase.storage
       .from(bucket)

@@ -12,8 +12,26 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  Plus,
+  Edit2,
+  Trash2,
+  Eye,
+  X,
+  Save
 } from 'lucide-react';
+import { getAdminArticles, createArticle, updateArticle, deleteArticle, getCategories } from '../services/articleService';
+import { uploadArticleImage } from '../services/storage';
+import type { Article, ArticleCategory, ArticleFormData } from '../types/article';
+import { RichTextEditor } from '../components/admin/article/RichTextEditor';
+import { SEOPanel } from '../components/admin/article/SEOPanel';
+import { ImageUploader } from '../components/admin/article/ImageUploader';
+import { CategorySelect } from '../components/admin/article/CategorySelect';
+import { TagInput } from '../components/admin/article/TagInput';
+import { SlugInput } from '../components/admin/article/SlugInput';
+import { analyzeSEO } from '../utils/seoAnalyzer';
+import { analyzeReadability } from '../utils/readabilityAnalyzer';
 
 type Transaction = {
   id: string;
@@ -48,7 +66,7 @@ type WithdrawRequest = {
 
 export function AdminDashboardPage() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'transactions' | 'withdraw'>('transactions');
+  const [activeTab, setActiveTab] = useState<'transactions' | 'withdraw' | 'artikel'>('transactions');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [withdrawRequests, setWithdrawRequests] = useState<WithdrawRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +82,31 @@ export function AdminDashboardPage() {
   // Pagination
   const [visibleCount, setVisibleCount] = useState(10);
   const ITEMS_PER_PAGE = 10;
+
+  // Article state
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [articleSearchQuery, setArticleSearchQuery] = useState('');
+  const [articleStatusFilter, setArticleStatusFilter] = useState<string>('');
+  const [isArticleEditorOpen, setIsArticleEditorOpen] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [isSavingArticle, setIsSavingArticle] = useState(false);
+
+  // Article form state
+  const [articleForm, setArticleForm] = useState<ArticleFormData>({
+    title: '',
+    slug: '',
+    excerpt: '',
+    content: '',
+    featuredImageUrl: '',
+    featuredImageAlt: '',
+    metaTitle: '',
+    metaDescription: '',
+    focusKeyword: '',
+    canonicalUrl: '',
+    categoryId: '',
+    tagIds: [],
+    status: 'draft',
+  });
 
   useEffect(() => {
     // Check if admin is logged in
@@ -291,6 +334,168 @@ export function AdminDashboardPage() {
     }
   };
 
+  const getArticleStatusBadge = (status: string) => {
+    switch (status) {
+      case 'published':
+        return (
+          <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold border border-green-200">
+            Published
+          </span>
+        );
+      case 'archived':
+        return (
+          <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-bold border border-gray-200">
+            Archived
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-bold border border-yellow-200">
+            Draft
+          </span>
+        );
+    }
+  };
+
+  // Fetch articles when artikel tab is active
+  useEffect(() => {
+    if (activeTab === 'artikel') {
+      fetchArticles();
+    }
+  }, [activeTab]);
+
+  const fetchArticles = async () => {
+    try {
+      const data = await getAdminArticles({
+        status: articleStatusFilter as 'draft' | 'published' | 'archived' | undefined,
+        search: articleSearchQuery || undefined,
+        orderBy: 'created_at',
+        orderDir: 'desc',
+      });
+      setArticles(data);
+    } catch (err) {
+      console.error('Error fetching articles:', err);
+    }
+  };
+
+  const resetArticleForm = () => {
+    setArticleForm({
+      title: '',
+      slug: '',
+      excerpt: '',
+      content: '',
+      featuredImageUrl: '',
+      featuredImageAlt: '',
+      metaTitle: '',
+      metaDescription: '',
+      focusKeyword: '',
+      canonicalUrl: '',
+      categoryId: '',
+      tagIds: [],
+      status: 'draft',
+    });
+    setEditingArticle(null);
+  };
+
+  const handleCreateArticle = () => {
+    resetArticleForm();
+    setIsArticleEditorOpen(true);
+  };
+
+  const handleEditArticle = (article: Article) => {
+    setEditingArticle(article);
+    setArticleForm({
+      title: article.title,
+      slug: article.slug,
+      excerpt: article.excerpt || '',
+      content: article.content,
+      featuredImageUrl: article.featuredImageUrl || '',
+      featuredImageAlt: article.featuredImageAlt || '',
+      metaTitle: article.metaTitle || '',
+      metaDescription: article.metaDescription || '',
+      focusKeyword: article.focusKeyword || '',
+      canonicalUrl: article.canonicalUrl || '',
+      categoryId: article.categoryId || '',
+      tagIds: article.tags.map(t => t.id),
+      status: article.status,
+    });
+    setIsArticleEditorOpen(true);
+  };
+
+  const handleSaveArticle = async () => {
+    if (!articleForm.title || !articleForm.content) {
+      alert('Judul dan konten harus diisi');
+      return;
+    }
+
+    setIsSavingArticle(true);
+
+    try {
+      // Calculate SEO scores
+      const seoResult = analyzeSEO({
+        title: articleForm.title,
+        metaTitle: articleForm.metaTitle,
+        metaDescription: articleForm.metaDescription,
+        focusKeyword: articleForm.focusKeyword,
+        content: articleForm.content,
+        featuredImageUrl: articleForm.featuredImageUrl,
+        featuredImageAlt: articleForm.featuredImageAlt,
+        slug: articleForm.slug,
+      });
+
+      const readabilityResult = analyzeReadability(articleForm.content);
+
+      const adminUserId = localStorage.getItem('admin_user_id');
+
+      if (editingArticle) {
+        // Update existing article
+        await updateArticle(editingArticle.id, {
+          ...articleForm,
+        });
+      } else {
+        // Create new article
+        await createArticle(articleForm, adminUserId || '');
+      }
+
+      // Refresh articles list
+      await fetchArticles();
+
+      // Close editor
+      setIsArticleEditorOpen(false);
+      resetArticleForm();
+    } catch (err) {
+      console.error('Error saving article:', err);
+      alert('Gagal menyimpan artikel. Silakan coba lagi.');
+    } finally {
+      setIsSavingArticle(false);
+    }
+  };
+
+  const handleDeleteArticle = async (articleId: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus artikel ini?')) return;
+
+    try {
+      await deleteArticle(articleId);
+      await fetchArticles();
+    } catch (err) {
+      console.error('Error deleting article:', err);
+      alert('Gagal menghapus artikel.');
+    }
+  };
+
+  const handleArticleImageUpload = async (file: File): Promise<string> => {
+    const articleId = editingArticle?.id || 'new-' + Date.now();
+    return uploadArticleImage(file, articleId);
+  };
+
+  // Filter articles
+  const filteredArticles = articles.filter(a => {
+    const matchesSearch = articleSearchQuery === '' ||
+      a.title.toLowerCase().includes(articleSearchQuery.toLowerCase());
+    const matchesStatus = articleStatusFilter === '' || a.status === articleStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   // Reset pagination when filter changes
   useEffect(() => {
     setVisibleCount(10);
@@ -361,6 +566,17 @@ export function AdminDashboardPage() {
               </span>
             )}
           </button>
+
+          <button
+            onClick={() => setActiveTab('artikel')}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition text-left ${activeTab === 'artikel'
+                ? 'bg-purple-50 text-purple-700 font-bold border border-purple-100 shadow-sm'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
+              }`}
+          >
+            <FileText className="w-5 h-5" />
+            Artikel
+          </button>
         </nav>
 
         <div className="p-4 border-t border-gray-100">
@@ -379,7 +595,7 @@ export function AdminDashboardPage() {
 
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-10">
           <h1 className="text-lg font-bold text-slate-800">
-            {activeTab === 'transactions' ? 'Daftar Transaksi' : 'Request Withdraw'}
+            {activeTab === 'transactions' ? 'Daftar Transaksi' : activeTab === 'withdraw' ? 'Request Withdraw' : 'Manajemen Artikel'}
           </h1>
           <div className="flex items-center gap-3">
             <button
@@ -591,6 +807,322 @@ export function AdminDashboardPage() {
                 {/* Footer */}
                 <div className="bg-gray-50 border-t border-gray-100 px-6 py-3 text-xs text-gray-500">
                   Total {withdrawRequests.length} request withdraw
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: ARTIKEL */}
+          {activeTab === 'artikel' && !isArticleEditorOpen && (
+            <div>
+              {/* Filter Bar */}
+              <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-6 flex flex-col sm:flex-row gap-4 items-end sm:items-center justify-between">
+                <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Cari artikel..."
+                      value={articleSearchQuery}
+                      onChange={(e) => setArticleSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-gray-200 rounded-lg text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition"
+                    />
+                  </div>
+                  <select
+                    value={articleStatusFilter}
+                    onChange={(e) => setArticleStatusFilter(e.target.value)}
+                    className="px-3 py-2 bg-slate-50 border border-gray-200 rounded-lg text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500 transition"
+                  >
+                    <option value="">Semua Status</option>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleCreateArticle}
+                  className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold px-4 py-2 rounded-lg shadow-sm shadow-purple-200 transition"
+                >
+                  <Plus className="w-4 h-4" />
+                  Buat Artikel
+                </button>
+              </div>
+
+              {/* Article List */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100">
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Judul</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Kategori</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">SEO Score</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Status</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Views</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {filteredArticles.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                            <FileText className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                            <p>Belum ada artikel</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredArticles.map(article => (
+                          <tr key={article.id} className="hover:bg-gray-50 transition">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                {article.featuredImageUrl ? (
+                                  <img
+                                    src={article.featuredImageUrl}
+                                    alt=""
+                                    className="w-12 h-8 rounded object-cover bg-gray-100"
+                                  />
+                                ) : (
+                                  <div className="w-12 h-8 rounded bg-gray-100 flex items-center justify-center">
+                                    <FileText className="w-4 h-4 text-gray-400" />
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-medium text-slate-900 line-clamp-1">{article.title}</div>
+                                  <div className="text-xs text-gray-500">{formatDate(article.createdAt)}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {article.category?.name || '-'}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${
+                                article.seoScore >= 80 ? 'bg-green-100 text-green-700' :
+                                article.seoScore >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                                article.seoScore >= 40 ? 'bg-orange-100 text-orange-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>
+                                {article.seoScore}/100
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              {getArticleStatusBadge(article.status)}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600">
+                              {article.viewCount.toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-end gap-2">
+                                <a
+                                  href={`/artikel/${article.slug}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                                  title="Preview"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </a>
+                                <button
+                                  onClick={() => handleEditArticle(article)}
+                                  className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                                  title="Edit"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteArticle(article.id)}
+                                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  title="Hapus"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="bg-gray-50 border-t border-gray-100 px-6 py-3 text-xs text-gray-500">
+                  Total {filteredArticles.length} artikel
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: ARTIKEL EDITOR */}
+          {activeTab === 'artikel' && isArticleEditorOpen && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+              {/* Editor Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      setIsArticleEditorOpen(false);
+                      resetArticleForm();
+                    }}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                  <h2 className="font-bold text-lg text-slate-900">
+                    {editingArticle ? 'Edit Artikel' : 'Buat Artikel Baru'}
+                  </h2>
+                </div>
+                <div className="flex items-center gap-3">
+                  <select
+                    value={articleForm.status}
+                    onChange={(e) => setArticleForm({ ...articleForm, status: e.target.value as 'draft' | 'published' | 'archived' })}
+                    className="px-3 py-2 border border-gray-200 rounded-lg text-sm"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="archived">Archived</option>
+                  </select>
+                  <button
+                    onClick={handleSaveArticle}
+                    disabled={isSavingArticle}
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold px-4 py-2 rounded-lg shadow-sm transition disabled:opacity-50"
+                  >
+                    {isSavingArticle ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    Simpan
+                  </button>
+                </div>
+              </div>
+
+              {/* Editor Content */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
+                {/* Left Column - Content */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Judul Artikel</label>
+                    <input
+                      type="text"
+                      value={articleForm.title}
+                      onChange={(e) => setArticleForm({ ...articleForm, title: e.target.value })}
+                      placeholder="Masukkan judul artikel..."
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">{articleForm.title.length} karakter</p>
+                  </div>
+
+                  {/* Slug */}
+                  <SlugInput
+                    value={articleForm.slug}
+                    title={articleForm.title}
+                    articleId={editingArticle?.id}
+                    onChange={(slug) => setArticleForm({ ...articleForm, slug })}
+                  />
+
+                  {/* Excerpt */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ringkasan (Excerpt)</label>
+                    <textarea
+                      value={articleForm.excerpt}
+                      onChange={(e) => setArticleForm({ ...articleForm, excerpt: e.target.value })}
+                      placeholder="Ringkasan singkat artikel untuk preview..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                    />
+                  </div>
+
+                  {/* Content Editor */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Konten</label>
+                    <RichTextEditor
+                      content={articleForm.content}
+                      onChange={(content) => setArticleForm({ ...articleForm, content })}
+                      onImageUpload={handleArticleImageUpload}
+                    />
+                  </div>
+                </div>
+
+                {/* Right Column - Settings & SEO */}
+                <div className="space-y-6">
+                  {/* Featured Image */}
+                  <ImageUploader
+                    imageUrl={articleForm.featuredImageUrl}
+                    imageAlt={articleForm.featuredImageAlt}
+                    onImageChange={(url) => setArticleForm({ ...articleForm, featuredImageUrl: url })}
+                    onAltChange={(alt) => setArticleForm({ ...articleForm, featuredImageAlt: alt })}
+                    onUpload={handleArticleImageUpload}
+                  />
+
+                  {/* Category */}
+                  <CategorySelect
+                    value={articleForm.categoryId}
+                    onChange={(categoryId) => setArticleForm({ ...articleForm, categoryId })}
+                  />
+
+                  {/* Tags */}
+                  <TagInput
+                    selectedTagIds={articleForm.tagIds}
+                    onChange={(tagIds) => setArticleForm({ ...articleForm, tagIds })}
+                  />
+
+                  {/* SEO Fields */}
+                  <div className="border-t border-gray-100 pt-6">
+                    <h3 className="font-semibold text-gray-900 mb-4">Pengaturan SEO</h3>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Focus Keyword</label>
+                        <input
+                          type="text"
+                          value={articleForm.focusKeyword}
+                          onChange={(e) => setArticleForm({ ...articleForm, focusKeyword: e.target.value })}
+                          placeholder="Kata kunci utama..."
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Meta Title
+                          <span className="text-gray-400 ml-1">({articleForm.metaTitle.length}/60)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={articleForm.metaTitle}
+                          onChange={(e) => setArticleForm({ ...articleForm, metaTitle: e.target.value })}
+                          placeholder="Judul untuk search engine..."
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Meta Description
+                          <span className="text-gray-400 ml-1">({articleForm.metaDescription.length}/160)</span>
+                        </label>
+                        <textarea
+                          value={articleForm.metaDescription}
+                          onChange={(e) => setArticleForm({ ...articleForm, metaDescription: e.target.value })}
+                          placeholder="Deskripsi untuk search engine..."
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SEO Panel */}
+                  <SEOPanel
+                    title={articleForm.title}
+                    metaTitle={articleForm.metaTitle}
+                    metaDescription={articleForm.metaDescription}
+                    focusKeyword={articleForm.focusKeyword}
+                    content={articleForm.content}
+                    featuredImageUrl={articleForm.featuredImageUrl}
+                    featuredImageAlt={articleForm.featuredImageAlt}
+                    slug={articleForm.slug}
+                  />
                 </div>
               </div>
             </div>

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-import { Search, Star, MapPin, Briefcase, Check, MessageCircle, CalendarCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Star, MapPin, Briefcase, Check, MessageCircle, CalendarCheck, ChevronLeft, ChevronRight, ArrowRight, Clock, Calendar } from 'lucide-react';
 import { getExperts } from '../services/database';
+import { getArticles } from '../services/articleService';
 import type { Expert } from '../App';
+import type { Article } from '../types/article';
+import { estimateReadingTime } from '../utils/readabilityAnalyzer';
 
 // Testimonial data
 const testimonials = [
@@ -70,25 +73,30 @@ export function HomePage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [experts, setExperts] = useState<Expert[]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const testimonialsPerPage = 4;
   const maxIndex = Math.ceil(testimonials.length / testimonialsPerPage) - 1;
 
   useEffect(() => {
-    async function loadExperts() {
+    async function loadData() {
       try {
-        const data = await getExperts();
+        const [expertsData, articlesData] = await Promise.all([
+          getExperts(),
+          getArticles({ status: 'published', limit: 3, orderBy: 'published_at', orderDir: 'desc' }),
+        ]);
         // Get top 4 experts by rating
-        const sortedExperts = data.sort((a, b) => b.rating - a.rating).slice(0, 4);
+        const sortedExperts = expertsData.sort((a, b) => b.rating - a.rating).slice(0, 4);
         setExperts(sortedExperts);
+        setArticles(articlesData);
       } catch (error) {
-        console.error('Error loading experts:', error);
+        console.error('Error loading data:', error);
       } finally {
         setLoading(false);
       }
     }
-    loadExperts();
+    loadData();
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -401,6 +409,90 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Articles Section */}
+      {articles.length > 0 && (
+        <section className="py-12 bg-gray-50 border-t border-gray-100">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl md:text-3xl font-bold italic mb-2">Artikel Terbaru</h2>
+                <p className="text-gray-500 text-sm">Tips dan insight untuk karirmu</p>
+              </div>
+              <Link
+                to="/artikel"
+                className="hidden md:flex items-center gap-2 text-brand-600 font-medium hover:text-brand-700 transition"
+              >
+                Lihat Semua
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {articles.map((article) => (
+                <Link
+                  key={article.id}
+                  to={`/artikel/${article.slug}`}
+                  className="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:border-brand-200 hover:shadow-lg transition-all"
+                >
+                  {article.featuredImageUrl ? (
+                    <div className="aspect-video overflow-hidden bg-gray-100">
+                      <img
+                        src={article.featuredImageUrl}
+                        alt={article.featuredImageAlt || article.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-video bg-gradient-to-br from-brand-100 to-brand-50 flex items-center justify-center">
+                      <span className="text-brand-300 text-4xl font-bold">M</span>
+                    </div>
+                  )}
+                  <div className="p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      {article.category && (
+                        <span className="inline-block px-2.5 py-0.5 bg-brand-100 text-brand-700 text-xs font-medium rounded">
+                          {article.category.name}
+                        </span>
+                      )}
+                      <span className="text-xs text-gray-400 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {estimateReadingTime(article.content)} menit
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-gray-900 group-hover:text-brand-700 transition-colors line-clamp-2 mb-2">
+                      {article.title}
+                    </h3>
+                    {article.excerpt && (
+                      <p className="text-sm text-gray-600 line-clamp-2 mb-3">{article.excerpt}</p>
+                    )}
+                    <div className="flex items-center text-xs text-gray-500">
+                      <Calendar className="w-3 h-3 mr-1" />
+                      {article.publishedAt
+                        ? new Date(article.publishedAt).toLocaleDateString('id-ID', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })
+                        : ''}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            <div className="text-center mt-6 md:hidden">
+              <Link
+                to="/artikel"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-full font-bold text-sm hover:border-brand-600 hover:text-brand-600 transition shadow-sm"
+              >
+                Lihat Semua Artikel
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-10 bg-brand-600 relative overflow-hidden">

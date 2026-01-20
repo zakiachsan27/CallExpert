@@ -10,7 +10,7 @@ type ProtectedRouteProps = {
 };
 
 export function ProtectedRoute({ children, requireUser, requireExpert }: ProtectedRouteProps) {
-  const { isUserLoggedIn, isExpertLoggedIn, isLoading } = useAuth();
+  const { isUserLoggedIn, isExpertLoggedIn, userId, isLoading } = useAuth();
   const location = useLocation();
 
   // Show loading while checking auth state
@@ -22,13 +22,14 @@ export function ProtectedRoute({ children, requireUser, requireExpert }: Protect
     );
   }
 
-  // Check User auth
-  if (requireUser && !isUserLoggedIn) {
+  // Check User auth - allow both regular users AND experts (both have userId)
+  // This allows experts to access user-facing features like booking other experts
+  if (requireUser && !userId) {
     // Redirect to login with return URL
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
-  // Check Expert auth
+  // Check Expert auth - strictly for expert dashboard/management
   if (requireExpert && !isExpertLoggedIn) {
     // Redirect to expert login with return URL
     return <Navigate to="/expert/login" state={{ from: location.pathname }} replace />;

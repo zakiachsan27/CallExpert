@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
+import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -18,6 +19,8 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { ArticleListPage } from './pages/ArticleListPage';
+import { ArticleDetailPage } from './pages/ArticleDetailPage';
 
 // Check if running on native mobile platform (Android/iOS)
 const isNativePlatform = Capacitor.isNativePlatform();
@@ -153,10 +156,11 @@ function App() {
 
   // Web App (Full Features)
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ChatProvider>
-          <Routes>
+    <HelmetProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <ChatProvider>
+            <Routes>
             {/* Public Routes */}
             <Route path="/" element={<HomePage />} />
             <Route path="/experts" element={<ExpertsPage />} />
@@ -166,6 +170,10 @@ function App() {
             <Route path="/expert/:slug" element={<ExpertDetailPage />} />
             <Route path="/invoice/:orderId" element={<InvoicePage />} />
             <Route path="/payment/success" element={<PaymentSuccessPage />} />
+
+            {/* Article Routes */}
+            <Route path="/artikel" element={<ArticleListPage />} />
+            <Route path="/artikel/:slug" element={<ArticleDetailPage />} />
 
             {/* Protected User Routes */}
             <Route
@@ -243,10 +251,11 @@ function App() {
 
             {/* 404 Not Found */}
             <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </ChatProvider>
-      </AuthProvider>
-    </BrowserRouter>
+            </Routes>
+          </ChatProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </HelmetProvider>
   );
 }
 
