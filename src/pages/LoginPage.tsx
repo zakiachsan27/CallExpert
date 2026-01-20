@@ -124,7 +124,7 @@ export function LoginPage() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label htmlFor="password" className="text-sm font-semibold text-gray-700">Password</Label>
-                <Link to="#" className="text-xs font-semibold text-brand-600 hover:text-brand-700">Lupa Password?</Link>
+                <Link to="/forgot-password" className="text-xs font-semibold text-brand-600 hover:text-brand-700">Lupa Password?</Link>
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />

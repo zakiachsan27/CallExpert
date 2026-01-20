@@ -21,6 +21,11 @@ export function ArticleListPage() {
   const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl || '');
   const [visibleCount, setVisibleCount] = useState(9);
 
+  // Scroll to top on page load
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   useEffect(() => {
     fetchData();
   }, [categoryFromUrl, searchFromUrl]);

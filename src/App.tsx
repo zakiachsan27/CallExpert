@@ -21,6 +21,7 @@ import { AdminLoginPage } from './pages/AdminLoginPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { ArticleListPage } from './pages/ArticleListPage';
 import { ArticleDetailPage } from './pages/ArticleDetailPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 
 // Check if running on native mobile platform (Android/iOS)
 const isNativePlatform = Capacitor.isNativePlatform();
@@ -166,6 +167,7 @@ function App() {
             <Route path="/experts" element={<ExpertsPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/expert/login" element={<ExpertLoginPage />} />
             <Route path="/expert/:slug" element={<ExpertDetailPage />} />
             <Route path="/invoice/:orderId" element={<InvoicePage />} />
