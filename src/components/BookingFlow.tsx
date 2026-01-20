@@ -184,11 +184,13 @@ export function BookingFlow({ expert, sessionType, onBookingComplete, onBack }: 
 
       if (isInstantBooking) {
         bookingDate = new Date();
-        bookingDateStr = bookingDate.toISOString().split('T')[0];
+        // Use local date format to avoid timezone issues
+        bookingDateStr = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}-${String(bookingDate.getDate()).padStart(2, '0')}`;
         bookingTime = bookingDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
       } else {
         bookingDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), selectedDate!);
-        bookingDateStr = bookingDate.toISOString().split('T')[0];
+        // Use local date format to avoid timezone issues (toISOString converts to UTC which shifts date)
+        bookingDateStr = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}-${String(bookingDate.getDate()).padStart(2, '0')}`;
         bookingTime = selectedTime!;
       }
 
