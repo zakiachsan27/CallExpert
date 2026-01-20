@@ -114,7 +114,7 @@ export function ArticleListPage() {
                   placeholder="Cari artikel..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full px-5 py-4 pl-12 rounded-xl border-0 shadow-lg focus:ring-2 focus:ring-purple-300 text-gray-900"
+                  className="w-full px-5 py-4 pl-12 rounded-xl border-0 shadow-lg focus:ring-2 focus:ring-purple-300 text-gray-900 bg-white"
                 />
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <button
