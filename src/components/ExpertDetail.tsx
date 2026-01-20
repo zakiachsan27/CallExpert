@@ -70,8 +70,8 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
                   alt={expert.name}
                   className="w-24 h-24 rounded-full border-4 border-brand-50 bg-white object-cover"
                 />
-                {expert.availability === 'online' && (
-                  <div className="absolute bottom-0 right-0 bg-green-500 w-5 h-5 rounded-full border-4 border-white"></div>
+                {expert.availableNow && (
+                  <div className="absolute bottom-0 right-0 bg-green-500 w-5 h-5 rounded-full border-4 border-white animate-pulse"></div>
                 )}
               </div>
               <div className="flex-1">

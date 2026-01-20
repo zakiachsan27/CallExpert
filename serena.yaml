@@ -1,0 +1,34 @@
+# Serena Configuration for CallExpert Project
+# TypeScript/React project configuration
+
+# Use Language Server Protocol backend
+language_backend: LSP
+
+# Logging settings
+log_level: 20  # info level
+
+# Web dashboard settings
+web_dashboard: true
+web_dashboard_listen_address: "127.0.0.1"
+web_dashboard_open_on_launch: false
+
+# Tool settings
+tool_timeout: 240  # seconds
+default_max_tool_answer_chars: 150000
+
+# Paths to ignore during analysis
+global_ignore:
+  - node_modules
+  - dist
+  - build
+  - .git
+  - android
+  - ios
+  - "*.lock"
+  - "*.log"
+
+# Project-specific settings
+projects:
+  CallExpert:
+    path: "c:\\Projects\\CallExpert"
+    language: typescript

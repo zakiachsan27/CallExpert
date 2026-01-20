@@ -5,6 +5,21 @@
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@playwright/mcp@latest"],
       "env": {}
+    },
+    "serena": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/oraios/serena",
+        "serena",
+        "start-mcp-server",
+        "--context",
+        "ide-assistant",
+        "--project",
+        "c:\\Projects\\CallExpert"
+      ],
+      "env": {}
     }
   }
 }
