@@ -66,7 +66,7 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col sm:flex-row gap-6 items-start">
               <div className="relative flex-shrink-0">
                 <img
-                  src={expert.avatar}
+                  src={expert.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${expert.name}`}
                   alt={expert.name}
                   className="w-24 h-24 rounded-full border-4 border-brand-50 bg-white object-cover"
                 />
