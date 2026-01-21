@@ -78,7 +78,8 @@ type MentorApplication = {
   portfolio_link: string | null;
   linkedin_url: string | null;
   instagram_url: string | null;
-  facebook_url: string | null;
+  threads_url: string | null;
+  tiktok_url: string | null;
   youtube_url: string | null;
   status: string;
   admin_notes: string | null;
@@ -1346,14 +1347,24 @@ export function AdminDashboardPage() {
                                     IG
                                   </a>
                                 )}
-                                {app.facebook_url && (
+                                {app.threads_url && (
                                   <a
-                                    href={app.facebook_url.startsWith('http') ? app.facebook_url : `https://${app.facebook_url}`}
+                                    href={app.threads_url.startsWith('http') ? app.threads_url : `https://${app.threads_url}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded"
+                                    className="text-xs text-gray-700 hover:text-gray-900 flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded"
                                   >
-                                    FB
+                                    Threads
+                                  </a>
+                                )}
+                                {app.tiktok_url && (
+                                  <a
+                                    href={app.tiktok_url.startsWith('http') ? app.tiktok_url : `https://${app.tiktok_url}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-black hover:text-gray-800 flex items-center gap-1 bg-gray-50 px-2 py-0.5 rounded"
+                                  >
+                                    TikTok
                                   </a>
                                 )}
                                 {app.youtube_url && (
@@ -1376,7 +1387,7 @@ export function AdminDashboardPage() {
                                     LI
                                   </a>
                                 )}
-                                {!app.portfolio_link && !app.instagram_url && !app.facebook_url && !app.youtube_url && !app.linkedin_url && (
+                                {!app.portfolio_link && !app.instagram_url && !app.threads_url && !app.tiktok_url && !app.youtube_url && !app.linkedin_url && (
                                   <span className="text-xs text-gray-400">-</span>
                                 )}
                               </div>

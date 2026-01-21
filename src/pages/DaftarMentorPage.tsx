@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { supabase } from '../services/supabase';
-import { ArrowLeft, Loader2, User, Mail, Phone, Briefcase, Link as LinkIcon, Linkedin, CheckCircle, AlertCircle, Instagram, Facebook, Youtube } from 'lucide-react';
+import { ArrowLeft, Loader2, User, Mail, Phone, Briefcase, Link as LinkIcon, Linkedin, CheckCircle, AlertCircle, Instagram, AtSign, Youtube, Music2 } from 'lucide-react';
 
 export function DaftarMentorPage() {
   const [name, setName] = useState('');
@@ -17,7 +17,8 @@ export function DaftarMentorPage() {
   const [portfolioLink, setPortfolioLink] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
-  const [facebookUrl, setFacebookUrl] = useState('');
+  const [threadsUrl, setThreadsUrl] = useState('');
+  const [tiktokUrl, setTiktokUrl] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -71,7 +72,8 @@ export function DaftarMentorPage() {
           portfolio_link: portfolioLink || null,
           linkedin_url: linkedinUrl || null,
           instagram_url: instagramUrl || null,
-          facebook_url: facebookUrl || null,
+          threads_url: threadsUrl || null,
+          tiktok_url: tiktokUrl || null,
           youtube_url: youtubeUrl || null,
           status: 'pending'
         });
@@ -92,7 +94,8 @@ export function DaftarMentorPage() {
       setPortfolioLink('');
       setLinkedinUrl('');
       setInstagramUrl('');
-      setFacebookUrl('');
+      setThreadsUrl('');
+      setTiktokUrl('');
       setYoutubeUrl('');
 
     } catch (err: any) {
@@ -264,16 +267,29 @@ export function DaftarMentorPage() {
                   />
                 </div>
 
-                {/* Facebook */}
+                {/* Threads */}
                 <div className="relative">
-                  <Facebook className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <AtSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    id="facebook"
+                    id="threads"
                     type="text"
-                    placeholder="facebook.com/username"
+                    placeholder="threads.net/@username"
                     className="pl-10 rounded-xl border-gray-200 focus:border-brand-500 focus:ring-brand-100"
-                    value={facebookUrl}
-                    onChange={(e) => setFacebookUrl(e.target.value)}
+                    value={threadsUrl}
+                    onChange={(e) => setThreadsUrl(e.target.value)}
+                  />
+                </div>
+
+                {/* TikTok */}
+                <div className="relative">
+                  <Music2 className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="tiktok"
+                    type="text"
+                    placeholder="tiktok.com/@username"
+                    className="pl-10 rounded-xl border-gray-200 focus:border-brand-500 focus:ring-brand-100"
+                    value={tiktokUrl}
+                    onChange={(e) => setTiktokUrl(e.target.value)}
                   />
                 </div>
 
