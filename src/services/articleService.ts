@@ -544,10 +544,21 @@ export async function updateArticleSEOScores(id: string, seoScore: number, reada
 }
 
 export async function deleteArticle(id: string): Promise<void> {
-  // Soft delete by setting status to archived
+  // First delete tag relations
+  const { error: tagError } = await supabase
+    .from('article_tag_relations')
+    .delete()
+    .eq('article_id', id);
+
+  if (tagError) {
+    console.error('Error deleting article tags:', tagError);
+    // Continue anyway - tags might not exist
+  }
+
+  // Hard delete the article
   const { error } = await supabase
     .from('articles')
-    .update({ status: 'archived' })
+    .delete()
     .eq('id', id);
 
   if (error) {
