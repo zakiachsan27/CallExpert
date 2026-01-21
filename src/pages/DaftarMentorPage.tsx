@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
 import { supabase } from '../services/supabase';
-import { ArrowLeft, Loader2, User, Mail, Phone, Briefcase, Link as LinkIcon, Linkedin, CheckCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, User, Mail, Phone, Briefcase, Link as LinkIcon, Linkedin, CheckCircle, AlertCircle, Instagram, Facebook, Youtube } from 'lucide-react';
 
 export function DaftarMentorPage() {
   const [name, setName] = useState('');
@@ -16,6 +16,9 @@ export function DaftarMentorPage() {
   const [expertise, setExpertise] = useState('');
   const [portfolioLink, setPortfolioLink] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
+  const [facebookUrl, setFacebookUrl] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -67,6 +70,9 @@ export function DaftarMentorPage() {
           expertise,
           portfolio_link: portfolioLink || null,
           linkedin_url: linkedinUrl || null,
+          instagram_url: instagramUrl || null,
+          facebook_url: facebookUrl || null,
+          youtube_url: youtubeUrl || null,
           status: 'pending'
         });
 
@@ -85,6 +91,9 @@ export function DaftarMentorPage() {
       setExpertise('');
       setPortfolioLink('');
       setLinkedinUrl('');
+      setInstagramUrl('');
+      setFacebookUrl('');
+      setYoutubeUrl('');
 
     } catch (err: any) {
       console.error('Submission error:', err);
@@ -200,8 +209,7 @@ export function DaftarMentorPage() {
                     required
                   />
                 </div>
-                <p className="text-xs text-gray-500">Format: 08xxxxxxxxxx atau +628xxxxxxxxxx</p>
-              </div>
+                              </div>
 
               {/* Input Expertise */}
               <div className="space-y-2">
@@ -219,8 +227,7 @@ export function DaftarMentorPage() {
                     required
                   />
                 </div>
-                <p className="text-xs text-gray-500">Bidang keahlian yang ingin Anda ajarkan (pisahkan dengan koma jika lebih dari satu)</p>
-              </div>
+                              </div>
 
               {/* Input Portfolio Link (Optional) */}
               <div className="space-y-2">
@@ -232,20 +239,58 @@ export function DaftarMentorPage() {
                   <Input
                     id="portfolio"
                     type="text"
-                    placeholder="instagram.com/username atau link lainnya"
+                    placeholder="drive.google.com/... atau link lainnya"
                     className="pl-10 rounded-xl border-gray-200 focus:border-brand-500 focus:ring-brand-100"
                     value={portfolioLink}
                     onChange={(e) => setPortfolioLink(e.target.value)}
                   />
                 </div>
-                <p className="text-xs text-gray-500">Website, Instagram, YouTube, atau platform lainnya yang menunjukkan karya Anda</p>
-              </div>
+                              </div>
 
-              {/* Input LinkedIn (Optional) */}
-              <div className="space-y-2">
-                <Label htmlFor="linkedin" className="text-sm font-semibold text-gray-700">
-                  LinkedIn <span className="text-gray-400 font-normal">(Opsional)</span>
-                </Label>
+              {/* Social Media Section */}
+              <div className="space-y-3 pt-2">
+                <p className="text-sm font-semibold text-gray-700">Sosial Media <span className="text-gray-400 font-normal">(Opsional)</span></p>
+
+                {/* Instagram */}
+                <div className="relative">
+                  <Instagram className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="instagram"
+                    type="text"
+                    placeholder="instagram.com/username"
+                    className="pl-10 rounded-xl border-gray-200 focus:border-brand-500 focus:ring-brand-100"
+                    value={instagramUrl}
+                    onChange={(e) => setInstagramUrl(e.target.value)}
+                  />
+                </div>
+
+                {/* Facebook */}
+                <div className="relative">
+                  <Facebook className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="facebook"
+                    type="text"
+                    placeholder="facebook.com/username"
+                    className="pl-10 rounded-xl border-gray-200 focus:border-brand-500 focus:ring-brand-100"
+                    value={facebookUrl}
+                    onChange={(e) => setFacebookUrl(e.target.value)}
+                  />
+                </div>
+
+                {/* YouTube */}
+                <div className="relative">
+                  <Youtube className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="youtube"
+                    type="text"
+                    placeholder="youtube.com/@channel"
+                    className="pl-10 rounded-xl border-gray-200 focus:border-brand-500 focus:ring-brand-100"
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                  />
+                </div>
+
+                {/* LinkedIn */}
                 <div className="relative">
                   <Linkedin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input

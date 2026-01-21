@@ -74,8 +74,11 @@ type MentorApplication = {
   email: string;
   whatsapp: string;
   expertise: string;
-  portfolio_link: string;
+  portfolio_link: string | null;
   linkedin_url: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  youtube_url: string | null;
   status: string;
   admin_notes: string | null;
   created_at: string;
@@ -1309,26 +1312,60 @@ export function AdminDashboardPage() {
                               </div>
                             </td>
                             <td className="px-4 py-4">
-                              <div className="flex flex-col gap-1">
-                                <a
-                                  href={app.portfolio_link.startsWith('http') ? app.portfolio_link : `https://${app.portfolio_link}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-brand-600 hover:text-brand-700 flex items-center gap-1"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  Portfolio
-                                </a>
-                                {app.linkedin_url && (
+                              <div className="flex flex-wrap gap-1">
+                                {app.portfolio_link && (
                                   <a
-                                    href={app.linkedin_url}
+                                    href={app.portfolio_link.startsWith('http') ? app.portfolio_link : `https://${app.portfolio_link}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                    className="text-xs text-brand-600 hover:text-brand-700 flex items-center gap-1 bg-brand-50 px-2 py-0.5 rounded"
                                   >
                                     <ExternalLink className="w-3 h-3" />
-                                    LinkedIn
+                                    Portfolio
                                   </a>
+                                )}
+                                {app.instagram_url && (
+                                  <a
+                                    href={app.instagram_url.startsWith('http') ? app.instagram_url : `https://${app.instagram_url}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-pink-600 hover:text-pink-700 flex items-center gap-1 bg-pink-50 px-2 py-0.5 rounded"
+                                  >
+                                    IG
+                                  </a>
+                                )}
+                                {app.facebook_url && (
+                                  <a
+                                    href={app.facebook_url.startsWith('http') ? app.facebook_url : `https://${app.facebook_url}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded"
+                                  >
+                                    FB
+                                  </a>
+                                )}
+                                {app.youtube_url && (
+                                  <a
+                                    href={app.youtube_url.startsWith('http') ? app.youtube_url : `https://${app.youtube_url}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1 bg-red-50 px-2 py-0.5 rounded"
+                                  >
+                                    YT
+                                  </a>
+                                )}
+                                {app.linkedin_url && (
+                                  <a
+                                    href={app.linkedin_url.startsWith('http') ? app.linkedin_url : `https://${app.linkedin_url}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-sky-600 hover:text-sky-700 flex items-center gap-1 bg-sky-50 px-2 py-0.5 rounded"
+                                  >
+                                    LI
+                                  </a>
+                                )}
+                                {!app.portfolio_link && !app.instagram_url && !app.facebook_url && !app.youtube_url && !app.linkedin_url && (
+                                  <span className="text-xs text-gray-400">-</span>
                                 )}
                               </div>
                             </td>
