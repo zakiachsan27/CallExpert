@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { getAdminArticles, createArticle, updateArticle, deleteArticle, getCategories } from '../services/articleService';
 import { uploadArticleImage } from '../services/storage';
+import { createUser } from '../services/database';
 import type { Article, ArticleCategory, ArticleFormData } from '../types/article';
 import { RichTextEditor } from '../components/admin/article/RichTextEditor';
 import { SEOPanel } from '../components/admin/article/SEOPanel';
@@ -551,6 +552,17 @@ export function AdminDashboardPage() {
           ...articleForm,
         });
       } else {
+        // Ensure admin user exists in public.users table before creating article
+        if (adminUserId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await createUser({
+              id: user.id,
+              email: user.email || 'admin@mentorinaja.com',
+              name: 'Admin',
+            });
+          }
+        }
         // Create new article
         await createArticle(articleForm, adminUserId || '');
       }

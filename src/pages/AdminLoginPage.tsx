@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
+import { createUser } from '../services/database';
 import { Lock, Mail, Eye, EyeOff, Loader2, AlertCircle, Shield } from 'lucide-react';
 
 const ADMIN_EMAIL = 'admin@mentorinaja.com';
@@ -40,6 +41,13 @@ export function AdminLoginPage() {
       // Store admin session
       localStorage.setItem('admin_access_token', data.session.access_token);
       localStorage.setItem('admin_user_id', data.user.id);
+
+      // Ensure admin user exists in public.users table for foreign key references
+      await createUser({
+        id: data.user.id,
+        email: data.user.email || email,
+        name: 'Admin',
+      });
 
       // Redirect to admin dashboard
       navigate('/admin/dashboard', { replace: true });
