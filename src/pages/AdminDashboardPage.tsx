@@ -19,7 +19,11 @@ import {
   Trash2,
   Eye,
   X,
-  Save
+  Save,
+  Users,
+  Mail,
+  Phone,
+  ExternalLink
 } from 'lucide-react';
 import { getAdminArticles, createArticle, updateArticle, deleteArticle, getCategories } from '../services/articleService';
 import { uploadArticleImage } from '../services/storage';
@@ -64,11 +68,25 @@ type WithdrawRequest = {
   created_at: string;
 };
 
+type MentorApplication = {
+  id: string;
+  name: string;
+  email: string;
+  whatsapp: string;
+  expertise: string;
+  portfolio_link: string;
+  linkedin_url: string | null;
+  status: string;
+  admin_notes: string | null;
+  created_at: string;
+};
+
 export function AdminDashboardPage() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'transactions' | 'withdraw' | 'artikel'>('transactions');
+  const [activeTab, setActiveTab] = useState<'transactions' | 'withdraw' | 'artikel' | 'pendaftar'>('transactions');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [withdrawRequests, setWithdrawRequests] = useState<WithdrawRequest[]>([]);
+  const [mentorApplications, setMentorApplications] = useState<MentorApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -364,6 +382,83 @@ export function AdminDashboardPage() {
     }
   }, [activeTab]);
 
+  // Fetch mentor applications when pendaftar tab is active
+  useEffect(() => {
+    if (activeTab === 'pendaftar') {
+      fetchMentorApplications();
+    }
+  }, [activeTab]);
+
+  const fetchMentorApplications = async () => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('mentor_applications')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (fetchError) {
+        console.warn('Error fetching mentor applications:', fetchError);
+        return;
+      }
+
+      setMentorApplications(data || []);
+    } catch (err) {
+      console.error('Error fetching mentor applications:', err);
+    }
+  };
+
+  const getMentorStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return (
+          <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold border border-green-200 flex items-center gap-1">
+            <CheckCircle className="w-3 h-3" /> Approved
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold border border-red-200 flex items-center gap-1">
+            <XCircle className="w-3 h-3" /> Rejected
+          </span>
+        );
+      case 'reviewed':
+        return (
+          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold border border-blue-200 flex items-center gap-1">
+            <Eye className="w-3 h-3" /> Reviewed
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-bold border border-orange-200 flex items-center gap-1">
+            <Clock className="w-3 h-3" /> Pending
+          </span>
+        );
+    }
+  };
+
+  const handleUpdateMentorStatus = async (id: string, newStatus: string) => {
+    try {
+      const { error: updateError } = await supabase
+        .from('mentor_applications')
+        .update({
+          status: newStatus,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      setMentorApplications(prev =>
+        prev.map(app =>
+          app.id === id ? { ...app, status: newStatus } : app
+        )
+      );
+    } catch (err) {
+      console.error('Error updating mentor status:', err);
+      alert('Gagal mengupdate status. Silakan coba lagi.');
+    }
+  };
+
   const fetchArticles = async () => {
     try {
       const data = await getAdminArticles({
@@ -577,6 +672,22 @@ export function AdminDashboardPage() {
             <FileText className="w-5 h-5" />
             Artikel
           </button>
+
+          <button
+            onClick={() => setActiveTab('pendaftar')}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition text-left relative ${activeTab === 'pendaftar'
+                ? 'bg-purple-50 text-purple-700 font-bold border border-purple-100 shadow-sm'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
+              }`}
+          >
+            <Users className="w-5 h-5" />
+            Pendaftar Mentor
+            {mentorApplications.filter(a => a.status === 'pending').length > 0 && (
+              <span className="absolute right-3 bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {mentorApplications.filter(a => a.status === 'pending').length}
+              </span>
+            )}
+          </button>
         </nav>
 
         <div className="p-4 border-t border-gray-100">
@@ -595,7 +706,7 @@ export function AdminDashboardPage() {
 
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-10">
           <h1 className="text-lg font-bold text-slate-800">
-            {activeTab === 'transactions' ? 'Daftar Transaksi' : activeTab === 'withdraw' ? 'Request Withdraw' : 'Manajemen Artikel'}
+            {activeTab === 'transactions' ? 'Daftar Transaksi' : activeTab === 'withdraw' ? 'Request Withdraw' : activeTab === 'artikel' ? 'Manajemen Artikel' : 'Pendaftar Mentor'}
           </h1>
           <div className="flex items-center gap-3">
             <button
@@ -1124,6 +1235,146 @@ export function AdminDashboardPage() {
                     slug={articleForm.slug}
                   />
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW: PENDAFTAR MENTOR */}
+          {activeTab === 'pendaftar' && (
+            <div>
+              {/* Stats Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                  <div className="text-2xl font-bold text-slate-900">{mentorApplications.length}</div>
+                  <div className="text-sm text-gray-500">Total Pendaftar</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                  <div className="text-2xl font-bold text-orange-600">{mentorApplications.filter(a => a.status === 'pending').length}</div>
+                  <div className="text-sm text-gray-500">Pending</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                  <div className="text-2xl font-bold text-green-600">{mentorApplications.filter(a => a.status === 'approved').length}</div>
+                  <div className="text-sm text-gray-500">Approved</div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                  <div className="text-2xl font-bold text-red-600">{mentorApplications.filter(a => a.status === 'rejected').length}</div>
+                  <div className="text-sm text-gray-500">Rejected</div>
+                </div>
+              </div>
+
+              {/* Applications List */}
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                {mentorApplications.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p className="text-gray-500">Belum ada pendaftar mentor.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-slate-50 border-b border-gray-200">
+                        <tr>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nama</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kontak</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Keahlian</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Links</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Tanggal</th>
+                          <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                          <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {mentorApplications.map((app) => (
+                          <tr key={app.id} className="hover:bg-slate-50 transition">
+                            <td className="px-4 py-4">
+                              <div className="font-semibold text-slate-900">{app.name}</div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-1 text-sm text-gray-600">
+                                  <Mail className="w-3 h-3" />
+                                  <a href={`mailto:${app.email}`} className="hover:text-brand-600">{app.email}</a>
+                                </div>
+                                <div className="flex items-center gap-1 text-sm text-gray-600">
+                                  <Phone className="w-3 h-3" />
+                                  <a href={`https://wa.me/${app.whatsapp.replace(/^0/, '62')}`} target="_blank" rel="noopener noreferrer" className="hover:text-green-600">
+                                    {app.whatsapp}
+                                  </a>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="text-sm text-gray-700 max-w-xs truncate" title={app.expertise}>
+                                {app.expertise}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex flex-col gap-1">
+                                <a
+                                  href={app.portfolio_link.startsWith('http') ? app.portfolio_link : `https://${app.portfolio_link}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-brand-600 hover:text-brand-700 flex items-center gap-1"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  Portfolio
+                                </a>
+                                {app.linkedin_url && (
+                                  <a
+                                    href={app.linkedin_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                    LinkedIn
+                                  </a>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 text-sm text-gray-500">
+                              {formatDate(app.created_at)}
+                            </td>
+                            <td className="px-4 py-4">
+                              {getMentorStatusBadge(app.status)}
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center justify-center gap-2">
+                                {app.status === 'pending' && (
+                                  <>
+                                    <button
+                                      onClick={() => handleUpdateMentorStatus(app.id, 'approved')}
+                                      className="p-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition"
+                                      title="Approve"
+                                    >
+                                      <CheckCircle className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleUpdateMentorStatus(app.id, 'rejected')}
+                                      className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
+                                      title="Reject"
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                                {app.status !== 'pending' && (
+                                  <button
+                                    onClick={() => handleUpdateMentorStatus(app.id, 'pending')}
+                                    className="p-1.5 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition text-xs"
+                                    title="Reset to Pending"
+                                  >
+                                    <RefreshCw className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
