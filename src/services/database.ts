@@ -133,32 +133,43 @@ export async function getExperts(): Promise<Expert[]> {
       .order('rating', { ascending: false });
 
     if (error) throw error;
+    if (!experts || experts.length === 0) return [];
 
-    // Fetch related data for each expert
-    const expertsWithRelations = await Promise.all(
-      experts.map(async (expert) => {
-        const [expertise, skills, achievements, education, workExperience, sessionTypes, digitalProducts] = await Promise.all([
-          supabase.from('expert_expertise').select('*').eq('expert_id', expert.id),
-          supabase.from('expert_skills').select('*').eq('expert_id', expert.id),
-          supabase.from('expert_achievements').select('*').eq('expert_id', expert.id),
-          supabase.from('expert_education').select('*').eq('expert_id', expert.id),
-          supabase.from('expert_work_experience').select('*').eq('expert_id', expert.id),
-          supabase.from('session_types').select('*').eq('expert_id', expert.id).eq('is_active', true),
-          supabase.from('digital_products').select('*').eq('expert_id', expert.id).eq('is_active', true)
-        ]);
+    // Get all expert IDs for batch queries
+    const expertIds = experts.map(e => e.id);
 
-        return {
-          ...expert,
-          expertise: expertise.data || [],
-          skills: skills.data || [],
-          achievements: achievements.data || [],
-          education: education.data || [],
-          work_experience: workExperience.data || [],
-          session_types: sessionTypes.data || [],
-          digital_products: digitalProducts.data || []
-        } as ExpertWithRelations;
-      })
-    );
+    // Fetch ALL related data in batch queries (only 7 queries instead of N*7)
+    const [
+      allExpertise,
+      allSkills,
+      allAchievements,
+      allEducation,
+      allWorkExperience,
+      allSessionTypes,
+      allDigitalProducts
+    ] = await Promise.all([
+      supabase.from('expert_expertise').select('*').in('expert_id', expertIds),
+      supabase.from('expert_skills').select('*').in('expert_id', expertIds),
+      supabase.from('expert_achievements').select('*').in('expert_id', expertIds),
+      supabase.from('expert_education').select('*').in('expert_id', expertIds),
+      supabase.from('expert_work_experience').select('*').in('expert_id', expertIds),
+      supabase.from('session_types').select('*').in('expert_id', expertIds).eq('is_active', true),
+      supabase.from('digital_products').select('*').in('expert_id', expertIds).eq('is_active', true)
+    ]);
+
+    // Map related data back to each expert
+    const expertsWithRelations = experts.map(expert => {
+      return {
+        ...expert,
+        expertise: (allExpertise.data || []).filter(e => e.expert_id === expert.id),
+        skills: (allSkills.data || []).filter(s => s.expert_id === expert.id),
+        achievements: (allAchievements.data || []).filter(a => a.expert_id === expert.id),
+        education: (allEducation.data || []).filter(e => e.expert_id === expert.id),
+        work_experience: (allWorkExperience.data || []).filter(w => w.expert_id === expert.id),
+        session_types: (allSessionTypes.data || []).filter(s => s.expert_id === expert.id),
+        digital_products: (allDigitalProducts.data || []).filter(d => d.expert_id === expert.id)
+      } as ExpertWithRelations;
+    });
 
     return expertsWithRelations.map(convertToAppExpert);
   } catch (error) {

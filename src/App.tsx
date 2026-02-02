@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { HelmetProvider } from 'react-helmet-async';
+import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -150,6 +151,7 @@ function App() {
               {/* Catch all - redirect to expert login */}
               <Route path="*" element={<Navigate to="/expert/login" replace />} />
             </Routes>
+            <Toaster position="top-center" richColors closeButton />
           </ChatProvider>
         </AuthProvider>
       </BrowserRouter>
@@ -256,6 +258,7 @@ function App() {
             {/* 404 Not Found */}
             <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            <Toaster position="top-center" richColors closeButton />
           </ChatProvider>
         </AuthProvider>
       </BrowserRouter>

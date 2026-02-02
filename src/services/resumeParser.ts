@@ -270,7 +270,7 @@ function extractYearsOfExperience(text: string): number {
 }
 
 /**
- * Calculate years from period string (e.g., "2020 - Present", "Jan 2018 - Dec 2020")
+ * Calculate years from period string (e.g., "2020 - Present", "Jan 2018 - Dec 2020", "Agustus 2025 – Sekarang")
  */
 function calculateYearsFromPeriod(period: string): number {
   const yearRegex = /\d{4}/g;
@@ -279,7 +279,10 @@ function calculateYearsFromPeriod(period: string): number {
   if (!years || years.length === 0) return 0;
 
   const startYear = parseInt(years[0]);
-  const endYear = period.toLowerCase().includes('present') || period.toLowerCase().includes('current')
+  const lowerPeriod = period.toLowerCase();
+  // Support Indonesian "Sekarang" as well as English "Present"/"Current"
+  const isCurrentJob = lowerPeriod.includes('present') || lowerPeriod.includes('current') || lowerPeriod.includes('sekarang');
+  const endYear = isCurrentJob
     ? new Date().getFullYear()
     : (years.length > 1 ? parseInt(years[1]) : new Date().getFullYear());
 
@@ -358,28 +361,160 @@ function extractWorkExperience(text: string): Array<{
     description: string;
   }> = [];
 
-  // Look for experience section with multiple variations
-  const expSectionRegex = /(?:WORK\s*EXPERIENCE|PROFESSIONAL\s*EXPERIENCE|EXPERIENCE|WORK\s*HISTORY|EMPLOYMENT\s*HISTORY|CAREER\s*HISTORY)[\s\S]*?(?=\n\n[A-Z]{2,}|EDUCATION|SKILLS|CERTIFICATIONS|PROJECTS|$)/i;
-  const expSection = text.match(expSectionRegex);
+  // Look for experience section with multiple variations (including Indonesian)
+  // First, find where the experience section starts
+  const expHeaderRegex = /(?:WORK\s*EXPERIENCE|PROFESSIONAL\s*EXPERIENCE|EXPERIENCE|WORK\s*HISTORY|EMPLOYMENT\s*HISTORY|CAREER\s*HISTORY|PENGALAMAN\s*KERJA|PENGALAMAN\s*PROFESIONAL)\s*\n/i;
+  const headerMatch = text.match(expHeaderRegex);
 
-  console.log('extractWorkExperience - Section found:', !!expSection);
-  if (!expSection) {
-    console.log('extractWorkExperience - No experience section found');
+  if (!headerMatch) {
+    console.log('extractWorkExperience - No experience section header found');
     return experiences;
   }
 
-  const sectionText = expSection[0];
-  console.log('extractWorkExperience - Section text preview:', sectionText.substring(0, 300));
+  const headerIndex = headerMatch.index! + headerMatch[0].length;
+  const remainingText = text.substring(headerIndex);
+
+  // Find where the section ends (at next major section)
+  const endSectionRegex = /\n(?:EDUCATION|SKILLS|TECHNICAL\s+SKILLS|CERTIFICATIONS|PROJECTS|KOMPETENSI|KOMPETENSI\s+UNGGULAN|PENDIDIKAN|KEAHLIAN|Tools:?\s*\n|Bahasa\s*\n|LANGUAGES|REFERENCES|AWARDS|ACHIEVEMENTS)/i;
+  const endMatch = remainingText.match(endSectionRegex);
+
+  const sectionText = endMatch
+    ? remainingText.substring(0, endMatch.index!)
+    : remainingText;
+
+  console.log('extractWorkExperience - Section found: true');
+  console.log('extractWorkExperience - Section text length:', sectionText.length);
+  console.log('extractWorkExperience - Section text preview:', sectionText.substring(0, 500));
+  console.log('extractWorkExperience - Section text end:', sectionText.substring(Math.max(0, sectionText.length - 500)));
 
   const lines = sectionText.split('\n').filter(line => line.trim().length > 0);
   console.log('extractWorkExperience - Total lines:', lines.length);
+
+  // Check if line is a bullet point (defined first as other functions depend on it)
+  const isBulletLine = (line: string): boolean => {
+    return /^[●•\-\*◦▪]\s*.+/.test(line.trim());
+  };
+
+  // Indonesian month names for date detection
+  const indonesianMonths = 'Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember';
+  const englishMonths = 'January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec';
+  // More flexible date regex - allows additional text after the date range (like "Paruh Waktu")
+  const dateLineRegex = new RegExp(`^(${indonesianMonths}|${englishMonths})\\s+\\d{4}\\s*[–\\-—]\\s*(${indonesianMonths}|${englishMonths}\\s+\\d{4}|\\d{4}|Sekarang|Present|Current)`, 'i');
+  // Also match year-only format like "2021 – 2023"
+  const yearOnlyDateRegex = /^\d{4}\s*[–\-—]\s*(\d{4}|Present|Sekarang|Current)/i;
+
+  // Check if line is a date line (Indonesian or English format)
+  const isDateLine = (line: string): boolean => {
+    const trimmed = line.trim();
+    return dateLineRegex.test(trimmed) || yearOnlyDateRegex.test(trimmed);
+  };
+
+  // Check if line is a company-location line (contains dash separator like "Company – Location" or "Company - Location")
+  // More flexible to allow dots, numbers, special chars in company names (like "Katadata.co.id")
+  const isCompanyLocationLine = (line: string): boolean => {
+    const trimmed = line.trim();
+    // Must contain a dash separator (em dash, en dash, or hyphen) not at start
+    // And have content on both sides
+    const dashMatch = trimmed.match(/^(.+?)\s*[–\-—]\s*(.+)$/);
+    if (dashMatch) {
+      const beforeDash = dashMatch[1].trim();
+      const afterDash = dashMatch[2].trim();
+      // Company name should be reasonably long and location should start with capital
+      return beforeDash.length > 2 && /^[A-Z]/.test(afterDash) && !isDateLine(trimmed);
+    }
+    return false;
+  };
+
+  // Check if line looks like a company name without location (no dash separator)
+  // e.g., "Telkom Digital Business x KLHK & BKPM", "Pengadilan Agama Jakarta Timur (Aplikasi Santrimo)"
+  const isCompanyOnlyLine = (line: string): boolean => {
+    const trimmed = line.trim();
+    // Not a date, not a bullet, starts with capital, has some length
+    return /^[A-Z]/.test(trimmed) &&
+           trimmed.length > 5 &&
+           trimmed.length < 120 &&
+           !isDateLine(trimmed) &&
+           !isBulletLine(trimmed) &&
+           // Contains company indicators OR is followed by a date line (checked in caller)
+           (/\s(x|&|\|)\s/.test(trimmed) ||           // collaboration/and patterns
+            /\.(co|com|id|org)/.test(trimmed) ||      // domain extensions
+            /^(PT|CV)\s/.test(trimmed) ||             // Indonesian company prefixes
+            /\([^)]+\)/.test(trimmed) ||              // has parentheses (like "Aplikasi Santrimo")
+            /^[A-Z][a-z]+\s+[A-Z]/.test(trimmed));    // Multi-word proper noun (Company Name pattern)
+  };
+
+  // Check if a line could be a company line when followed by a date line
+  // This is a more permissive check used in context
+  const isPotentialCompanyLine = (line: string): boolean => {
+    const trimmed = line.trim();
+    return /^[A-Z]/.test(trimmed) &&
+           trimmed.length > 3 &&
+           trimmed.length < 120 &&
+           !isDateLine(trimmed) &&
+           !isBulletLine(trimmed);
+  };
+
+  // Check if line looks like a continuation of a bullet point (not a real title)
+  // These are lines that were split by PDF extraction
+  const isBulletContinuation = (line: string): boolean => {
+    const trimmed = line.trim();
+    // Common patterns that indicate this is continuation text, not a title
+    const continuationPatterns = [
+      /^(dan|serta|untuk|dengan|dalam|yang|secara|hingga|sehingga|termasuk|melalui|berisi|terkait)\s/i, // Indonesian connectors at start
+      /^(and|or|for|with|in|to|by|from|including|through|using)\s/i, // English connectors at start
+      /^(rencana|kebutuhan|beban|target|sistem)\s/i, // Common noun starters from bullets
+      /\.\s*$/, // Ends with period (likely end of sentence from bullet)
+      /^[a-z]/, // Starts with lowercase (continuation)
+    ];
+    return continuationPatterns.some(pattern => pattern.test(trimmed));
+  };
+
+  // Check if line looks like a valid job title
+  const isLikelyJobTitle = (line: string): boolean => {
+    const trimmed = line.trim();
+    // Must start with capital, not be a bullet continuation
+    if (!(/^[A-Z]/.test(trimmed))) return false;
+    if (isBulletContinuation(trimmed)) return false;
+    if (isBulletLine(trimmed)) return false;
+    if (isDateLine(trimmed)) return false;
+    if (isCompanyLocationLine(trimmed)) return false;
+
+    // Job titles usually contain certain words or patterns
+    const jobTitlePatterns = [
+      /manager/i, /director/i, /lead/i, /senior/i, /junior/i,
+      /engineer/i, /developer/i, /analyst/i, /specialist/i,
+      /coordinator/i, /executive/i, /officer/i, /head/i,
+      /consultant/i, /architect/i, /designer/i, /tenaga\s+ahli/i,
+      /product/i, /project/i, /group/i
+    ];
+
+    // If it matches a job title pattern, it's likely a title
+    if (jobTitlePatterns.some(p => p.test(trimmed))) return true;
+
+    // If line is reasonably short (typical title length) and doesn't look like description
+    if (trimmed.length < 80 && trimmed.length > 5) {
+      // Check it doesn't look like a sentence (no common sentence starters/connectors)
+      const sentencePatterns = [/^Mem\w+/, /^Meng\w+/, /^Meny\w+/, /^Men\w+/, /^Ber\w+/]; // Indonesian verb prefixes
+      if (!sentencePatterns.some(p => p.test(trimmed))) {
+        return true;
+      }
+    }
+
+    return false;
+  };
 
   let i = 1; // Skip section header
   while (i < lines.length) {
     const line = lines[i].trim();
 
+    // Skip bullet points and empty lines when looking for job title
+    if (isBulletLine(line) || line.length < 5) {
+      i++;
+      continue;
+    }
+
     // Check if line contains job title with | separator (e.g., "Job Title | Company | Date")
-    if (line.includes('|') && /[A-Z]/.test(line) && !line.startsWith('-') && !line.startsWith('•')) {
+    if (line.includes('|') && /[A-Z]/.test(line) && !isBulletLine(line)) {
       const parts = line.split('|').map(p => p.trim());
 
       if (parts.length >= 2) {
@@ -396,13 +531,13 @@ function extractWorkExperience(text: string): Array<{
           const descLine = lines[i].trim();
 
           // Stop if we hit another job entry with |
-          if (descLine.includes('|') && /[A-Z]/.test(descLine) && !descLine.startsWith('-') && !descLine.startsWith('•')) {
+          if (descLine.includes('|') && /[A-Z]/.test(descLine) && !isBulletLine(descLine)) {
             break;
           }
 
           // Add description lines
-          if (descLine.startsWith('•') || descLine.startsWith('-') || descLine.startsWith('*')) {
-            description += descLine.replace(/^[•\-*]\s*/, '') + ' ';
+          if (isBulletLine(descLine)) {
+            description += descLine.replace(/^[●•\-\*◦▪]\s*/, '') + ' ';
             i++;
           } else if (descLine.length > 20 && descLine.length < 200) {
             description += descLine + ' ';
@@ -423,13 +558,89 @@ function extractWorkExperience(text: string): Array<{
       }
     }
 
+    // NEW: Check for Indonesian 3-line format (Title, Company-Location or Company, Date)
+    // Format 1: Job Title / Alternative Title
+    //           Company – Location
+    //           Month Year – Month Year/Sekarang
+    // Format 2: Job Title (with parentheses)
+    //           Company Name (no location)
+    //           Month Year – Month Year
+    if (isLikelyJobTitle(line) && line.length > 5 && line.length < 100) {
+      // Check if next two lines match the pattern
+      const nextLineIdx = i + 1;
+      const dateLineIdx = i + 2;
+
+      if (nextLineIdx < lines.length && dateLineIdx < lines.length) {
+        const nextLine = lines[nextLineIdx].trim();
+        const potentialDateLine = lines[dateLineIdx].trim();
+
+        // Check if this is 3-line format: Title, Company (any format), Date
+        // Use flexible company detection - if next line is not a date/bullet and is followed by a date
+        const isCompanyLine = isCompanyLocationLine(nextLine) || isCompanyOnlyLine(nextLine) || isPotentialCompanyLine(nextLine);
+
+        if (isCompanyLine && isDateLine(potentialDateLine)) {
+          const title = line;
+          let company = '';
+          let location = '';
+
+          // Extract company and location based on format
+          if (isCompanyLocationLine(nextLine)) {
+            const companyMatch = nextLine.match(/^(.+?)\s*[–\-—]\s*(.+)$/);
+            company = companyMatch ? companyMatch[1].trim() : nextLine;
+            location = companyMatch ? companyMatch[2].trim() : '';
+          } else {
+            company = nextLine;
+          }
+          const period = potentialDateLine;
+
+          console.log('extractWorkExperience - Found 3-line format:', { title, company, location, period });
+          i = dateLineIdx + 1;
+
+          // Collect bullet points as description
+          let description = '';
+          while (i < lines.length) {
+            const descLine = lines[i].trim();
+
+            // Stop if we hit a new job title (not a bullet, not a date, starts with capital)
+            if (!isBulletLine(descLine) && !isDateLine(descLine) && /^[A-Z]/.test(descLine) && descLine.length > 5) {
+              // Check if next lines form a new job entry
+              const checkNextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+              const checkDateLine = i + 2 < lines.length ? lines[i + 2].trim() : '';
+
+              if ((isCompanyLocationLine(checkNextLine) || isCompanyOnlyLine(checkNextLine) || isPotentialCompanyLine(checkNextLine)) && isDateLine(checkDateLine)) {
+                break;
+              }
+              if (descLine.includes('|') && /[A-Z]/.test(descLine)) {
+                break;
+              }
+            }
+
+            // Add bullet point descriptions
+            if (isBulletLine(descLine)) {
+              description += descLine.replace(/^[●•\-\*◦▪]\s*/, '') + ' ';
+              i++;
+            } else if (descLine.length > 20 && descLine.length < 200 && !isDateLine(descLine)) {
+              description += descLine + ' ';
+              i++;
+            } else {
+              break;
+            }
+          }
+
+          experiences.push({
+            title,
+            company: location ? `${company}, ${location}` : company,
+            period,
+            description: description.trim().substring(0, 300)
+          });
+          console.log('extractWorkExperience - Added 3-line format experience:', { title, company, period });
+          continue;
+        }
+      }
+    }
+
     // Check if this line looks like a job title (original logic for other formats)
-    if (/^[A-Z]/.test(line) &&
-        !line.startsWith('•') &&
-        !line.startsWith('-') &&
-        !line.startsWith('*') &&
-        line.length > 5 &&
-        line.length < 100) {
+    if (isLikelyJobTitle(line) && line.length > 5 && line.length < 100) {
 
       const title = line;
       console.log('extractWorkExperience - Found potential title:', title);
@@ -447,7 +658,7 @@ function extractWorkExperience(text: string): Array<{
           company = parts[0].trim();
           period = parts[1] ? parts[1].trim() : '';
           i++;
-        } else if (/\d{4}/.test(nextLine)) {
+        } else if (isDateLine(nextLine) || /\d{4}/.test(nextLine)) {
           // This line is a date, previous line might be on same line as title
           period = nextLine;
           company = title.split(/\s{2,}|\||–|—/)[1] || '';
@@ -458,7 +669,7 @@ function extractWorkExperience(text: string): Array<{
           i++;
 
           // Check next line for period
-          if (i < lines.length && /\d{4}/.test(lines[i])) {
+          if (i < lines.length && (isDateLine(lines[i]) || /\d{4}/.test(lines[i]))) {
             period = lines[i].trim();
             i++;
           }
@@ -470,15 +681,13 @@ function extractWorkExperience(text: string): Array<{
           const descLine = lines[i].trim();
 
           // Stop if we hit another job title pattern
-          if (/^[A-Z][a-z]+\s+[A-Z]/.test(descLine) &&
-              !descLine.startsWith('•') &&
-              !descLine.startsWith('-')) {
+          if (/^[A-Z][a-z]+\s+[A-Z]/.test(descLine) && !isBulletLine(descLine)) {
             break;
           }
 
           // Add description lines
-          if (descLine.startsWith('•') || descLine.startsWith('-') || descLine.startsWith('*')) {
-            description += descLine.replace(/^[•\-*]\s*/, '') + ' ';
+          if (isBulletLine(descLine)) {
+            description += descLine.replace(/^[●•\-\*◦▪]\s*/, '') + ' ';
             i++;
           } else if (descLine.length > 20) {
             description += descLine + ' ';
@@ -504,7 +713,7 @@ function extractWorkExperience(text: string): Array<{
   }
 
   console.log('extractWorkExperience - Total experiences found:', experiences.length);
-  return experiences.slice(0, 5); // Limit to latest 5 experiences
+  return experiences.slice(0, 15); // Limit to latest 15 experiences
 }
 
 /**

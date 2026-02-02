@@ -168,9 +168,7 @@ const nativeStorage = {
 const webStorage = {
   getItem: (key: string): string | null => {
     try {
-      const value = localStorage.getItem(key);
-      console.log(`🔐 Storage getItem(${key}):`, value ? 'found' : 'null');
-      return value;
+      return localStorage.getItem(key);
     } catch (error) {
       console.error('Storage getItem error:', error);
       return null;
@@ -178,7 +176,6 @@ const webStorage = {
   },
   setItem: (key: string, value: string) => {
     try {
-      console.log(`🔐 Storage setItem(${key}):`, value ? 'setting' : 'clearing');
       localStorage.setItem(key, value);
     } catch (error) {
       console.error('Storage setItem error:', error);
@@ -186,7 +183,6 @@ const webStorage = {
   },
   removeItem: (key: string) => {
     try {
-      console.log(`🔐 Storage removeItem(${key})`);
       localStorage.removeItem(key);
     } catch (error) {
       console.error('Storage removeItem error:', error);

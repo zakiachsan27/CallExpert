@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { toast } from "sonner";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -24,6 +25,7 @@ import {
 } from "lucide-react";
 import { uploadAvatar } from "../services/storage";
 import { parseResume, type ParsedResumeData } from "../services/resumeParser";
+import { updateExpertProfile } from "../services/database";
 
 // Import komponen Shadcn
 import { Button } from "../components/ui/button";
@@ -269,12 +271,21 @@ export function ExpertDashboardPage() {
       let avatarUrl = profileAvatar;
       if (avatarFile && expertId) {
         try {
+          toast.loading('Mengupload foto...', { id: 'upload-avatar' });
           avatarUrl = await uploadAvatar(avatarFile, expertId);
+          console.log('Avatar uploaded successfully:', avatarUrl);
           setProfileAvatar(avatarUrl);
           setAvatarFile(null);
-        } catch (uploadErr) {
+          toast.dismiss('upload-avatar');
+
+          // Also update avatar_url in Supabase database for consistency
+          await updateExpertProfile(expertId, { avatar_url: avatarUrl });
+          console.log('Avatar URL saved to database');
+        } catch (uploadErr: any) {
+          toast.dismiss('upload-avatar');
           console.error('Error uploading avatar:', uploadErr);
-          throw new Error('Gagal upload foto profil');
+          const errorMsg = uploadErr?.message || 'Gagal upload foto profil';
+          throw new Error(`Upload gagal: ${errorMsg}`);
         }
       }
 
@@ -293,6 +304,8 @@ export function ExpertDashboardPage() {
         education: educations
       };
 
+      toast.loading('Menyimpan perubahan...', { id: 'save-profile' });
+
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-92eeba71/expert/profile`,
         {
@@ -305,13 +318,38 @@ export function ExpertDashboardPage() {
         }
       );
 
+      toast.dismiss('save-profile');
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save profile');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Server response error:', response.status, errorData);
+        throw new Error(errorData.error || `Server error: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      console.log('Profile saved successfully:', responseData);
+
+      // Also sync basic profile data to Supabase database
+      if (expertId) {
+        try {
+          await updateExpertProfile(expertId, {
+            name: profileName,
+            company: profileCompany,
+            role: profileRole,
+            bio: profileBio,
+            avatar_url: avatarUrl
+          });
+        } catch (dbErr) {
+          console.warn('Warning: Could not sync to database:', dbErr);
+          // Don't throw - KV save was successful
+        }
       }
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+      toast.success('Perubahan berhasil disimpan!', {
+        description: avatarFile ? 'Foto profil dan data telah diperbarui.' : 'Data profil telah diperbarui.'
+      });
 
       setOriginalData({
         sessionTypes: JSON.stringify(sessionTypes),
@@ -332,6 +370,9 @@ export function ExpertDashboardPage() {
       console.error('Error saving profile:', err);
       const errorMessage = err instanceof Error ? err.message : 'Gagal menyimpan profil';
       setError(errorMessage);
+      toast.error('Gagal menyimpan perubahan', {
+        description: errorMessage
+      });
     } finally {
       setIsSaving(false);
     }
@@ -490,16 +531,17 @@ export function ExpertDashboardPage() {
     if (file) {
       // Validate file
       if (file.size > 5 * 1024 * 1024) {
-        setError('Ukuran file maksimal 5MB');
+        toast.error('Ukuran file terlalu besar', { description: 'Maksimal 5MB' });
         return;
       }
       if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
-        setError('Format file harus JPG, PNG, atau WebP');
+        toast.error('Format file tidak didukung', { description: 'Gunakan format JPG, PNG, atau WebP' });
         return;
       }
 
       setAvatarFile(file);
       setAvatarPreview(URL.createObjectURL(file));
+      toast.info('Foto dipilih', { description: 'Klik "Simpan Perubahan" untuk mengupload.' });
     }
   };
 
