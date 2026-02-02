@@ -35,8 +35,9 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           port: 22
           script: |
-            cd /path/to/CallExpert
+            cd ${{ secrets.SERVER_PATH }}
             git pull origin main
             npm ci
             npm run build
-            pm2 restart CallExpert
+            pm2 restart all || pm2 serve . 3000 --name CallExpert --spa
+
