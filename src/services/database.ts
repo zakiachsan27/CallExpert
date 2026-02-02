@@ -178,6 +178,55 @@ export async function getExperts(): Promise<Expert[]> {
   }
 }
 
+// Get featured experts with limit (optimized for homepage)
+export async function getFeaturedExperts(limit: number = 6): Promise<Expert[]> {
+  try {
+    // Fetch limited experts - only what we need for homepage
+    const { data: experts, error } = await supabase
+      .from('experts')
+      .select('*')
+      .or('is_active.eq.true,is_active.is.null')
+      .order('rating', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    if (!experts || experts.length === 0) return [];
+
+    // Get expert IDs for batch queries
+    const expertIds = experts.map(e => e.id);
+
+    // Fetch only essential data (skip achievements, education, work_experience for homepage cards)
+    const [
+      allExpertise,
+      allSkills,
+      allSessionTypes
+    ] = await Promise.all([
+      supabase.from('expert_expertise').select('*').in('expert_id', expertIds),
+      supabase.from('expert_skills').select('*').in('expert_id', expertIds),
+      supabase.from('session_types').select('*').in('expert_id', expertIds).eq('is_active', true)
+    ]);
+
+    // Map related data back to each expert
+    const expertsWithRelations = experts.map(expert => {
+      return {
+        ...expert,
+        expertise: (allExpertise.data || []).filter(e => e.expert_id === expert.id),
+        skills: (allSkills.data || []).filter(s => s.expert_id === expert.id),
+        achievements: [],
+        education: [],
+        work_experience: [],
+        session_types: (allSessionTypes.data || []).filter(s => s.expert_id === expert.id),
+        digital_products: []
+      } as ExpertWithRelations;
+    });
+
+    return expertsWithRelations.map(convertToAppExpert);
+  } catch (error) {
+    console.error('Error fetching featured experts:', error);
+    throw error;
+  }
+}
+
 // Get single expert by ID
 export async function getExpertById(expertId: string): Promise<Expert | null> {
   try {

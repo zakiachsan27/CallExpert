@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { Search, Star, MapPin, Briefcase, Check, MessageCircle, CalendarCheck, ChevronLeft, ChevronRight, ArrowRight, Clock, Calendar } from 'lucide-react';
-import { getExperts } from '../services/database';
+import { getFeaturedExperts } from '../services/database';
 import { getArticles } from '../services/articleService';
 import type { Expert } from '../App';
 import type { Article } from '../types/article';
@@ -83,12 +83,10 @@ export function HomePage() {
     async function loadData() {
       try {
         const [expertsData, articlesData] = await Promise.all([
-          getExperts(),
+          getFeaturedExperts(4), // Only fetch 4 experts with essential data
           getArticles({ status: 'published', limit: 3, orderBy: 'published_at', orderDir: 'desc' }),
         ]);
-        // Get top 4 experts by rating
-        const sortedExperts = expertsData.sort((a, b) => b.rating - a.rating).slice(0, 4);
-        setExperts(sortedExperts);
+        setExperts(expertsData);
         setArticles(articlesData);
       } catch (error) {
         console.error('Error loading data:', error);
@@ -325,6 +323,10 @@ export function HomePage() {
                     <img
                       src={expert.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${expert.name}`}
                       alt={expert.name}
+                      width={44}
+                      height={44}
+                      loading="lazy"
+                      decoding="async"
                       className="w-11 h-11 rounded-xl bg-gray-100 border object-cover"
                     />
                     <span className="text-xs font-bold text-yellow-700 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-100 flex items-center gap-1">
@@ -440,6 +442,10 @@ export function HomePage() {
                       <img
                         src={article.featuredImageUrl}
                         alt={article.featuredImageAlt || article.title}
+                        width={400}
+                        height={225}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                     </div>

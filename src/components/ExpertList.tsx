@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Search, Filter } from 'lucide-react';
 import { ExpertCard } from './ExpertCard';
 import { Input } from './ui/input';
@@ -62,64 +62,67 @@ export function ExpertList({
     }
   };
 
-  // Get all unique expertise
-  const allExpertise = Array.from(
-    new Set(experts.flatMap(expert => expert.expertise))
+  // Get all unique expertise (memoized)
+  const allExpertise = useMemo(() =>
+    Array.from(new Set(experts.flatMap(expert => expert.expertise))),
+    [experts]
   );
 
-  // Filter experts
-  const filteredExperts = experts.filter(expert => {
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = 
-        expert.name.toLowerCase().includes(query) ||
-        expert.role.toLowerCase().includes(query) ||
-        expert.company.toLowerCase().includes(query) ||
-        expert.expertise.some(skill => skill.toLowerCase().includes(query));
-      
-      if (!matchesSearch) return false;
-    }
+  // Filter experts (memoized)
+  const filteredExperts = useMemo(() => {
+    return experts.filter(expert => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch =
+          expert.name.toLowerCase().includes(query) ||
+          expert.role.toLowerCase().includes(query) ||
+          expert.company.toLowerCase().includes(query) ||
+          expert.expertise.some(skill => skill.toLowerCase().includes(query));
 
-    // Expertise filter
-    if (selectedExpertise.length > 0) {
-      const hasExpertise = selectedExpertise.some(skill => 
-        expert.expertise.includes(skill)
-      );
-      if (!hasExpertise) return false;
-    }
+        if (!matchesSearch) return false;
+      }
 
-    // Session type filter
-    if (selectedSessionTypes.length > 0) {
-      const hasSessionType = selectedSessionTypes.some(type =>
-        expert.sessionTypes.some(st => st.category === type)
-      );
-      if (!hasSessionType) return false;
-    }
+      // Expertise filter
+      if (selectedExpertise.length > 0) {
+        const hasExpertise = selectedExpertise.some(skill =>
+          expert.expertise.includes(skill)
+        );
+        if (!hasExpertise) return false;
+      }
 
-    // Availability filter
-    if (selectedAvailability !== 'all') {
-      if (expert.availability !== selectedAvailability) return false;
-    }
+      // Session type filter
+      if (selectedSessionTypes.length > 0) {
+        const hasSessionType = selectedSessionTypes.some(type =>
+          expert.sessionTypes.some(st => st.category === type)
+        );
+        if (!hasSessionType) return false;
+      }
 
-    return true;
-  });
+      // Availability filter
+      if (selectedAvailability !== 'all') {
+        if (expert.availability !== selectedAvailability) return false;
+      }
 
-  const toggleExpertise = (skill: string) => {
+      return true;
+    });
+  }, [experts, searchQuery, selectedExpertise, selectedSessionTypes, selectedAvailability]);
+
+  const toggleExpertise = useCallback((skill: string) => {
     setSelectedExpertise(prev =>
       prev.includes(skill)
         ? prev.filter(s => s !== skill)
         : [...prev, skill]
     );
-  };
+  }, []);
 
-  const toggleSessionType = (type: string) => {
+  const toggleSessionType = useCallback((type: string) => {
     setSelectedSessionTypes(prev =>
       prev.includes(type)
         ? prev.filter(t => t !== type)
         : [...prev, type]
     );
-  };
+  }, []);
 
   const clearAllFilters = () => {
     setSelectedExpertise([]);

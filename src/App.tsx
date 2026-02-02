@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { HelmetProvider } from 'react-helmet-async';
@@ -5,25 +6,34 @@ import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { ChatProvider } from './contexts/ChatContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { HomePage } from './pages/HomePage';
-import { ExpertsPage } from './pages/ExpertsPage';
-import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { ExpertLoginPage } from './pages/ExpertLoginPage';
-import { ExpertDetailPage } from './pages/ExpertDetailPage';
-import { BookingPage } from './pages/BookingPage';
-import { UserTransactionsPage } from './pages/UserTransactionsPage';
-import { ExpertDashboardPage } from './pages/ExpertDashboardPage';
-import { InvoicePage } from './pages/InvoicePage';
-import { SessionPage } from './pages/SessionPage';
-import PaymentSuccessPage from './pages/PaymentSuccessPage';
-import { NotFoundPage } from './pages/NotFoundPage';
-import { AdminLoginPage } from './pages/AdminLoginPage';
-import { AdminDashboardPage } from './pages/AdminDashboardPage';
-import { ArticleListPage } from './pages/ArticleListPage';
-import { ArticleDetailPage } from './pages/ArticleDetailPage';
-import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
-import { DaftarMentorPage } from './pages/DaftarMentorPage';
+
+// Lazy load all pages for code splitting
+const HomePage = lazy(() => import('./pages/HomePage').then(m => ({ default: m.HomePage })));
+const ExpertsPage = lazy(() => import('./pages/ExpertsPage').then(m => ({ default: m.ExpertsPage })));
+const LoginPage = lazy(() => import('./pages/LoginPage').then(m => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const ExpertLoginPage = lazy(() => import('./pages/ExpertLoginPage').then(m => ({ default: m.ExpertLoginPage })));
+const ExpertDetailPage = lazy(() => import('./pages/ExpertDetailPage').then(m => ({ default: m.ExpertDetailPage })));
+const BookingPage = lazy(() => import('./pages/BookingPage').then(m => ({ default: m.BookingPage })));
+const UserTransactionsPage = lazy(() => import('./pages/UserTransactionsPage').then(m => ({ default: m.UserTransactionsPage })));
+const ExpertDashboardPage = lazy(() => import('./pages/ExpertDashboardPage').then(m => ({ default: m.ExpertDashboardPage })));
+const InvoicePage = lazy(() => import('./pages/InvoicePage').then(m => ({ default: m.InvoicePage })));
+const SessionPage = lazy(() => import('./pages/SessionPage').then(m => ({ default: m.SessionPage })));
+const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage').then(m => ({ default: m.AdminLoginPage })));
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })));
+const ArticleListPage = lazy(() => import('./pages/ArticleListPage').then(m => ({ default: m.ArticleListPage })));
+const ArticleDetailPage = lazy(() => import('./pages/ArticleDetailPage').then(m => ({ default: m.ArticleDetailPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const DaftarMentorPage = lazy(() => import('./pages/DaftarMentorPage').then(m => ({ default: m.DaftarMentorPage })));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
+  </div>
+);
 
 // Check if running on native mobile platform (Android/iOS)
 const isNativePlatform = Capacitor.isNativePlatform();
@@ -110,6 +120,7 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <ChatProvider>
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Redirect root to expert login */}
               <Route path="/" element={<Navigate to="/expert/login" replace />} />
@@ -151,6 +162,7 @@ function App() {
               {/* Catch all - redirect to expert login */}
               <Route path="*" element={<Navigate to="/expert/login" replace />} />
             </Routes>
+            </Suspense>
             <Toaster position="top-center" richColors closeButton />
           </ChatProvider>
         </AuthProvider>
@@ -164,6 +176,7 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <ChatProvider>
+            <Suspense fallback={<PageLoader />}>
             <Routes>
             {/* Public Routes */}
             <Route path="/" element={<HomePage />} />
@@ -258,6 +271,7 @@ function App() {
             {/* 404 Not Found */}
             <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            </Suspense>
             <Toaster position="top-center" richColors closeButton />
           </ChatProvider>
         </AuthProvider>

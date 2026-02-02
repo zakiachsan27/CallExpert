@@ -1,11 +1,12 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { supabase } from './supabase';
 
-// Use worker with new URL constructor (works with Vite)
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+// PDF.js worker setup - use CDN for production reliability
+// This is more reliable than bundled worker which can fail in production
+const PDFJS_VERSION = '4.10.38'; // Match installed version
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.mjs`;
+
+console.log('[ResumeParser] PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
 
 // =============================================
 // AI-BASED RESUME PARSING (Recommended)
@@ -163,19 +164,30 @@ export interface ParsedResumeData {
  */
 export async function extractTextFromPDF(file: File): Promise<string> {
   try {
-    console.log('Starting PDF extraction for:', file.name);
-    
+    console.log('[PDF Extract] Starting for:', file.name, 'Size:', file.size);
+    console.log('[PDF Extract] Worker src:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+
     const arrayBuffer = await file.arrayBuffer();
-    console.log('ArrayBuffer created, size:', arrayBuffer.byteLength);
-    
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    console.log('PDF loaded, pages:', pdf.numPages);
+    console.log('[PDF Extract] ArrayBuffer created, size:', arrayBuffer.byteLength);
+
+    console.log('[PDF Extract] Loading PDF document...');
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+
+    // Add progress logging
+    loadingTask.onProgress = (progress: { loaded: number; total: number }) => {
+      if (progress.total > 0) {
+        console.log('[PDF Extract] Loading progress:', Math.round((progress.loaded / progress.total) * 100) + '%');
+      }
+    };
+
+    const pdf = await loadingTask.promise;
+    console.log('[PDF Extract] PDF loaded successfully, pages:', pdf.numPages);
 
     let fullText = '';
 
     // Extract text from all pages
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      console.log('Extracting page:', pageNum);
+      console.log('[PDF Extract] Extracting page:', pageNum, '/', pdf.numPages);
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
 
@@ -200,12 +212,24 @@ export async function extractTextFromPDF(file: File): Promise<string> {
       fullText += pageText + '\n\n';
     }
 
-    console.log('Extraction complete, text length:', fullText.length);
+    console.log('[PDF Extract] Extraction complete, text length:', fullText.length);
+    console.log('[PDF Extract] Preview:', fullText.substring(0, 200));
     return fullText;
-  } catch (error) {
-    console.error('Error extracting text from PDF:', error);
-    console.error('Error details:', JSON.stringify(error, null, 2));
-    throw new Error('Failed to extract text from PDF. Please ensure the file is a valid PDF.');
+  } catch (error: any) {
+    console.error('[PDF Extract] Error extracting text from PDF:', error);
+    console.error('[PDF Extract] Error name:', error?.name);
+    console.error('[PDF Extract] Error message:', error?.message);
+
+    // Provide more specific error messages
+    if (error?.name === 'PasswordException') {
+      throw new Error('PDF is password protected. Please upload an unprotected PDF.');
+    } else if (error?.name === 'InvalidPDFException') {
+      throw new Error('Invalid PDF file. Please upload a valid PDF document.');
+    } else if (error?.message?.includes('worker')) {
+      throw new Error('PDF worker failed to load. Please refresh and try again.');
+    }
+
+    throw new Error(`Failed to read PDF: ${error?.message || 'Unknown error'}`);
   }
 }
 

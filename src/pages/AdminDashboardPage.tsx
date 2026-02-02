@@ -102,8 +102,10 @@ export function AdminDashboardPage() {
   const [selectedWithdrawId, setSelectedWithdrawId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Pagination
-  const [visibleCount, setVisibleCount] = useState(10);
+  // Pagination - server-side for transactions
+  const [transactionOffset, setTransactionOffset] = useState(0);
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const ITEMS_PER_PAGE = 10;
 
   // Article state
@@ -145,10 +147,13 @@ export function AdminDashboardPage() {
   const fetchData = async () => {
     setIsLoading(true);
     setError('');
+    // Reset pagination state on initial fetch
+    setTransactionOffset(0);
+    setHasMoreTransactions(true);
 
     try {
-      // Fetch transactions (bookings with related data)
-      const { data: bookingsData, error: bookingsError } = await supabase
+      // Fetch transactions (bookings with related data) - PAGINATED: first 10 only
+      const { data: bookingsData, error: bookingsError, count } = await supabase
         .from('bookings')
         .select(`
           id,
@@ -162,8 +167,9 @@ export function AdminDashboardPage() {
           expert:experts(id, name, role, avatar_url),
           user:users(id, name, email),
           session_type:session_types(id, name, category)
-        `)
-        .order('created_at', { ascending: false });
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(0, ITEMS_PER_PAGE - 1);
 
       if (bookingsError) throw bookingsError;
 
@@ -184,6 +190,9 @@ export function AdminDashboardPage() {
       }));
 
       setTransactions(formattedTransactions);
+      setTransactionOffset(ITEMS_PER_PAGE);
+      // Check if there are more items
+      setHasMoreTransactions((count || 0) > ITEMS_PER_PAGE);
 
       // Fetch withdraw requests with expert info
       const { data: withdrawData, error: withdrawError } = await supabase
@@ -229,6 +238,62 @@ export function AdminDashboardPage() {
       setError('Gagal memuat data. Silakan refresh halaman.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Load more transactions from server (pagination)
+  const loadMoreTransactions = async () => {
+    if (isLoadingMore || !hasMoreTransactions) return;
+
+    setIsLoadingMore(true);
+
+    try {
+      const { data: bookingsData, error: bookingsError, count } = await supabase
+        .from('bookings')
+        .select(`
+          id,
+          order_id,
+          booking_date,
+          booking_time,
+          total_price,
+          status,
+          payment_status,
+          created_at,
+          expert:experts(id, name, role, avatar_url),
+          user:users(id, name, email),
+          session_type:session_types(id, name, category)
+        `, { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(transactionOffset, transactionOffset + ITEMS_PER_PAGE - 1);
+
+      if (bookingsError) throw bookingsError;
+
+      const newTransactions: Transaction[] = (bookingsData || []).map((b: any) => ({
+        id: b.id,
+        order_id: b.order_id || b.id.slice(0, 8).toUpperCase(),
+        expert_name: b.expert?.name || 'Unknown Expert',
+        user_name: b.user?.name || 'Unknown User',
+        user_email: b.user?.email || '',
+        service_name: b.session_type?.name || 'Unknown Service',
+        service_category: b.session_type?.category || 'online-chat',
+        booking_date: b.booking_date,
+        booking_time: b.booking_time,
+        total_price: b.total_price,
+        status: b.status,
+        payment_status: b.payment_status,
+        created_at: b.created_at
+      }));
+
+      // Append new transactions to existing list
+      setTransactions(prev => [...prev, ...newTransactions]);
+      const newOffset = transactionOffset + ITEMS_PER_PAGE;
+      setTransactionOffset(newOffset);
+      // Check if there are more items
+      setHasMoreTransactions((count || 0) > newOffset);
+    } catch (err) {
+      console.error('Error loading more transactions:', err);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -607,10 +672,6 @@ export function AdminDashboardPage() {
     return matchesSearch && matchesStatus;
   });
 
-  // Reset pagination when filter changes
-  useEffect(() => {
-    setVisibleCount(10);
-  }, [searchQuery, dateFilter]);
 
   // Filter transactions
   const filteredTransactions = transactions.filter(t => {
@@ -799,7 +860,7 @@ export function AdminDashboardPage() {
                           </td>
                         </tr>
                       ) : (
-                        filteredTransactions.slice(0, visibleCount).map((trx) => (
+                        filteredTransactions.map((trx) => (
                           <tr key={trx.id} className="hover:bg-gray-50 transition">
                             <td className="px-6 py-4 font-mono text-gray-500 text-xs">
                               #{trx.order_id?.slice(0, 8) || trx.id.slice(0, 8)}
@@ -828,16 +889,26 @@ export function AdminDashboardPage() {
 
                 {/* Footer */}
                 <div className="bg-gray-50 border-t border-gray-100 px-6 py-4 flex flex-col items-center gap-3">
-                  {filteredTransactions.length > visibleCount && (
+                  {hasMoreTransactions && !searchQuery && !dateFilter && (
                     <button
-                      onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
-                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition"
+                      onClick={loadMoreTransactions}
+                      disabled={isLoadingMore}
+                      className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition disabled:opacity-50 flex items-center gap-2"
                     >
-                      Tampilkan Lebih Banyak ({filteredTransactions.length - visibleCount} lagi)
+                      {isLoadingMore ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Memuat...
+                        </>
+                      ) : (
+                        'Muat Lebih Banyak'
+                      )}
                     </button>
                   )}
                   <p className="text-xs text-gray-500">
-                    Menampilkan {Math.min(visibleCount, filteredTransactions.length)} dari {filteredTransactions.length} transaksi
+                    Menampilkan {filteredTransactions.length} transaksi
+                    {(searchQuery || dateFilter) && ' (hasil filter)'}
+                    {hasMoreTransactions && !searchQuery && !dateFilter && ' • Scroll atau klik untuk muat lebih banyak'}
                   </p>
                 </div>
               </div>

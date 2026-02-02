@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Star, Briefcase, MapPin } from 'lucide-react';
 import type { Expert } from '../App';
 
@@ -6,7 +7,7 @@ type ExpertCardProps = {
   onClick: () => void;
 };
 
-export function ExpertCard({ expert, onClick }: ExpertCardProps) {
+export const ExpertCard = memo(function ExpertCard({ expert, onClick }: ExpertCardProps) {
   const lowestPrice = Math.min(...expert.sessionTypes.map(s => s.price));
 
   const formatPrice = (price: number) => {
@@ -27,6 +28,10 @@ export function ExpertCard({ expert, onClick }: ExpertCardProps) {
         <img
           src={expert.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${expert.name}`}
           alt={expert.name}
+          width={56}
+          height={56}
+          loading="lazy"
+          decoding="async"
           className="w-14 h-14 rounded-2xl bg-gray-100 border object-cover"
         />
         <span className="text-xs font-bold text-yellow-700 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100 flex items-center gap-1">
@@ -82,4 +87,4 @@ export function ExpertCard({ expert, onClick }: ExpertCardProps) {
       </div>
     </div>
   );
-}
+});

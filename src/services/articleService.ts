@@ -212,61 +212,65 @@ export async function getArticles(params: ArticleQueryParams = {}): Promise<Arti
     throw error;
   }
 
-  // Fetch tags for each article
-  const articlesWithTags = await Promise.all(
-    (data || []).map(async (article: ArticleRow & { category: ArticleCategoryRow | null; author: { id: string; name: string; email: string } | null }) => {
-      const { data: tagRelations } = await supabase
-        .from('article_tag_relations')
-        .select('tag:article_tags(*)')
-        .eq('article_id', article.id);
+  if (!data || data.length === 0) return [];
 
-      const tags = (tagRelations || []).map((r: { tag: ArticleTagRow }) => ({
+  // Batch fetch all tags for all articles (fixes N+1 query)
+  const articleIds = data.map((a: ArticleRow) => a.id);
+  const { data: allTagRelations } = await supabase
+    .from('article_tag_relations')
+    .select('article_id, tag:article_tags(*)')
+    .in('article_id', articleIds);
+
+  // Map tags to articles
+  const articlesWithTags = data.map((article: ArticleRow & { category: ArticleCategoryRow | null; author: { id: string; name: string; email: string } | null }) => {
+    const articleTags = (allTagRelations || [])
+      .filter((r: { article_id: string; tag: ArticleTagRow }) => r.article_id === article.id)
+      .map((r: { article_id: string; tag: ArticleTagRow }) => ({
         id: r.tag.id,
         name: r.tag.name,
         slug: r.tag.slug,
         createdAt: r.tag.created_at,
       }));
 
-      return {
-        id: article.id,
-        title: article.title,
-        slug: article.slug,
-        excerpt: article.excerpt,
-        content: article.content,
-        featuredImageUrl: article.featured_image_url,
-        featuredImageAlt: article.featured_image_alt,
-        metaTitle: article.meta_title,
-        metaDescription: article.meta_description,
-        focusKeyword: article.focus_keyword,
-        canonicalUrl: article.canonical_url,
-        seoScore: article.seo_score,
-        readabilityScore: article.readability_score,
-        category: article.category ? {
-          id: article.category.id,
-          name: article.category.name,
-          slug: article.category.slug,
-          description: article.category.description,
-          isActive: article.category.is_active,
-          sortOrder: article.category.sort_order,
-          createdAt: article.category.created_at,
-          updatedAt: article.category.updated_at,
-        } : null,
-        categoryId: article.category_id,
-        tags,
-        status: article.status,
-        publishedAt: article.published_at,
-        author: article.author ? {
-          id: article.author.id,
-          name: article.author.name,
-          email: article.author.email,
-        } : null,
-        authorId: article.author_id,
-        viewCount: article.view_count,
-        createdAt: article.created_at,
-        updatedAt: article.updated_at,
-      } as Article;
-    })
-  );
+    return {
+      id: article.id,
+      title: article.title,
+      slug: article.slug,
+      excerpt: article.excerpt,
+      content: article.content,
+      featuredImageUrl: article.featured_image_url,
+      featuredImageAlt: article.featured_image_alt,
+      metaTitle: article.meta_title,
+      metaDescription: article.meta_description,
+      focusKeyword: article.focus_keyword,
+      canonicalUrl: article.canonical_url,
+      seoScore: article.seo_score,
+      readabilityScore: article.readability_score,
+      category: article.category ? {
+        id: article.category.id,
+        name: article.category.name,
+        slug: article.category.slug,
+        description: article.category.description,
+        isActive: article.category.is_active,
+        sortOrder: article.category.sort_order,
+        createdAt: article.category.created_at,
+        updatedAt: article.category.updated_at,
+      } : null,
+      categoryId: article.category_id,
+      tags: articleTags,
+      status: article.status,
+      publishedAt: article.published_at,
+      author: article.author ? {
+        id: article.author.id,
+        name: article.author.name,
+        email: article.author.email,
+      } : null,
+      authorId: article.author_id,
+      viewCount: article.view_count,
+      createdAt: article.created_at,
+      updatedAt: article.updated_at,
+    } as Article;
+  });
 
   return articlesWithTags;
 }

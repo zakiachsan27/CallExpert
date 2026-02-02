@@ -614,8 +614,15 @@ export function ExpertDashboardPage() {
   };
 
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[Resume Upload] File input changed');
     const file = e.target.files?.[0];
-    if (!file) return;
+
+    if (!file) {
+      console.log('[Resume Upload] No file selected');
+      return;
+    }
+
+    console.log('[Resume Upload] File selected:', file.name, 'Size:', file.size);
 
     // Validate file type
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -623,11 +630,14 @@ export function ExpertDashboardPage() {
       return;
     }
 
+    // Show loading immediately
     setIsParsingResume(true);
     setError('');
+    console.log('[Resume Upload] Starting AI parsing...');
 
     try {
       const parsedData = await parseResumeWithAI(file);
+      console.log('[Resume Upload] Parsing complete:', parsedData);
       setResumeFileName(file.name);
 
       // Auto-fill form fields with AI-parsed data
@@ -667,9 +677,16 @@ export function ExpertDashboardPage() {
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
-      console.error('Error parsing resume:', err);
-      setError('Gagal membaca file resume. Pastikan file PDF valid.');
+    } catch (err: any) {
+      console.error('[Resume Upload] Error parsing resume:', err);
+      const errorMessage = err?.message || 'Unknown error';
+      if (errorMessage.includes('PDF')) {
+        setError('Gagal membaca file PDF. Pastikan file tidak corrupt atau terproteksi.');
+      } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        setError('Gagal terhubung ke server. Periksa koneksi internet Anda.');
+      } else {
+        setError(`Gagal memproses resume: ${errorMessage}`);
+      }
     } finally {
       setIsParsingResume(false);
       // Reset input
