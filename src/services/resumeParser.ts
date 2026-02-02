@@ -1,10 +1,138 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import { supabase } from './supabase';
 
 // Use worker with new URL constructor (works with Vite)
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url
 ).toString();
+
+// =============================================
+// AI-BASED RESUME PARSING (Recommended)
+// =============================================
+
+export interface AIParsedResume {
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  location: string | null;
+  summary: string | null;
+  experiences: Array<{
+    title: string;
+    company: string;
+    location: string | null;
+    start_date: string | null;
+    end_date: string | null;
+    is_current: boolean;
+    description: string | null;
+  }>;
+  education: Array<{
+    institution: string;
+    degree: string | null;
+    field_of_study: string | null;
+    start_date: string | null;
+    end_date: string | null;
+  }>;
+  skills: string[];
+}
+
+/**
+ * Parse resume using AI (recommended for better accuracy)
+ * Falls back to regex-based parsing if AI fails
+ */
+export async function parseResumeWithAI(file: File): Promise<AIParsedResume> {
+  const text = await extractTextFromPDF(file);
+
+  console.log('=== AI PARSING RESUME ===');
+  console.log('Text length:', text.length);
+
+  try {
+    // Call the Edge Function
+    const { data, error } = await supabase.functions.invoke('parse-resume-ai', {
+      body: { resumeText: text }
+    });
+
+    if (error) {
+      console.error('Edge Function error:', error);
+      throw new Error(error.message || 'Failed to call AI parser');
+    }
+
+    if (!data?.success) {
+      console.error('AI parsing failed:', data?.error);
+      throw new Error(data?.error || 'AI parsing failed');
+    }
+
+    console.log('=== AI PARSED RESULT ===');
+    console.log('Name:', data.data.name);
+    console.log('Experiences:', data.data.experiences?.length || 0);
+    console.log('Education:', data.data.education?.length || 0);
+    console.log('Skills:', data.data.skills?.length || 0);
+
+    return data.data as AIParsedResume;
+
+  } catch (error) {
+    console.error('AI parsing error, falling back to regex:', error);
+
+    // Fall back to regex-based parsing
+    const regexResult = await parseResume(file);
+
+    // Convert regex result to AI format
+    return {
+      name: regexResult.name || null,
+      email: regexResult.email || null,
+      phone: regexResult.phone || null,
+      location: regexResult.location.city ? `${regexResult.location.city}, ${regexResult.location.country}` : null,
+      summary: regexResult.bio || null,
+      experiences: regexResult.workExperience.map(exp => ({
+        title: exp.title,
+        company: exp.company,
+        location: null,
+        start_date: extractStartDate(exp.period),
+        end_date: extractEndDate(exp.period),
+        is_current: isCurrentPosition(exp.period),
+        description: exp.description
+      })),
+      education: regexResult.education.map(edu => ({
+        institution: edu,
+        degree: null,
+        field_of_study: null,
+        start_date: null,
+        end_date: null
+      })),
+      skills: regexResult.skills
+    };
+  }
+}
+
+// Helper functions for fallback conversion
+function extractStartDate(period: string): string | null {
+  const yearMatch = period.match(/\d{4}/);
+  if (yearMatch) {
+    return `${yearMatch[0]}-01`;
+  }
+  return null;
+}
+
+function extractEndDate(period: string): string | null {
+  const lowerPeriod = period.toLowerCase();
+  if (lowerPeriod.includes('present') || lowerPeriod.includes('current') || lowerPeriod.includes('sekarang')) {
+    return null;
+  }
+  const years = period.match(/\d{4}/g);
+  if (years && years.length > 1) {
+    return `${years[1]}-12`;
+  }
+  return null;
+}
+
+function isCurrentPosition(period: string): boolean {
+  const lowerPeriod = period.toLowerCase();
+  return lowerPeriod.includes('present') || lowerPeriod.includes('current') || lowerPeriod.includes('sekarang');
+}
+
+// =============================================
+// REGEX-BASED RESUME PARSING (Fallback)
+// =============================================
 
 export interface ParsedResumeData {
   name: string;

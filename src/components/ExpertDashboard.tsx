@@ -663,6 +663,29 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
     }
   };
 
+  // Helper function to format period from AI-parsed dates
+  const formatPeriod = (startDate: string | null, endDate: string | null, isCurrent: boolean): string => {
+    const formatDate = (date: string | null): string => {
+      if (!date) return '';
+      const [year, month] = date.split('-');
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthIdx = parseInt(month, 10) - 1;
+      return `${months[monthIdx] || ''} ${year}`;
+    };
+
+    const start = formatDate(startDate);
+    const end = isCurrent ? 'Present' : formatDate(endDate);
+
+    if (start && end) {
+      return `${start} - ${end}`;
+    } else if (start) {
+      return start;
+    } else if (end) {
+      return end;
+    }
+    return 'Present';
+  };
+
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -678,35 +701,75 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
     setError('');
 
     try {
-      // Import parser dynamically
-      const { parseResume } = await import('../services/resumeParser');
+      // Import AI parser dynamically
+      const { parseResumeWithAI } = await import('../services/resumeParser');
 
-      // Parse resume and extract data
-      const parsedData = await parseResume(file);
+      // Parse resume using AI
+      const parsedData = await parseResumeWithAI(file);
 
-      // Auto-fill form fields with parsed data
+      // Auto-fill form fields with AI-parsed data
       if (parsedData.name) setName(parsedData.name);
       if (parsedData.email) setEmail(parsedData.email);
-      if (parsedData.company) setCompany(parsedData.company);
-      if (parsedData.role) setRole(parsedData.role);
-      if (parsedData.experience > 0) setExperience(parsedData.experience);
-      if (parsedData.bio) setBio(parsedData.bio);
+      if (parsedData.summary) setBio(parsedData.summary);
 
-      if (parsedData.location.city) setLocationCity(parsedData.location.city);
-      if (parsedData.location.country) setLocationCountry(parsedData.location.country);
+      // Extract location from string (e.g., "Jakarta, Indonesia")
+      if (parsedData.location) {
+        const locationParts = parsedData.location.split(',').map(p => p.trim());
+        if (locationParts.length >= 2) {
+          setLocationCity(locationParts[0]);
+          setLocationCountry(locationParts[locationParts.length - 1]);
+        } else {
+          setLocationCity(parsedData.location);
+        }
+      }
 
-      if (parsedData.expertise.length > 0) setExpertise(parsedData.expertise);
       if (parsedData.skills.length > 0) setSkills(parsedData.skills);
 
-      if (parsedData.workExperience.length > 0) setWorkExperience(parsedData.workExperience);
-      if (parsedData.education.length > 0) setEducation(parsedData.education);
-      if (parsedData.achievements.length > 0) setAchievements(parsedData.achievements);
+      // Set company and role from first (current) experience
+      if (parsedData.experiences && parsedData.experiences.length > 0) {
+        const currentExp = parsedData.experiences[0];
+        if (currentExp.company) setCompany(currentExp.company);
+        if (currentExp.title) setRole(currentExp.title);
+
+        // Calculate years of experience
+        let totalYears = 0;
+        parsedData.experiences.forEach(exp => {
+          if (exp.start_date) {
+            const startYear = parseInt(exp.start_date.split('-')[0], 10);
+            const endYear = exp.is_current
+              ? new Date().getFullYear()
+              : (exp.end_date ? parseInt(exp.end_date.split('-')[0], 10) : new Date().getFullYear());
+            totalYears += Math.max(0, endYear - startYear);
+          }
+        });
+        if (totalYears > 0) setExperience(totalYears);
+
+        // Convert experiences to form format
+        const formExperiences = parsedData.experiences.map(exp => ({
+          title: exp.title,
+          company: exp.location ? `${exp.company}, ${exp.location}` : exp.company,
+          period: formatPeriod(exp.start_date, exp.end_date, exp.is_current),
+          description: exp.description || ''
+        }));
+        setWorkExperience(formExperiences);
+      }
+
+      // Convert education to string format
+      if (parsedData.education && parsedData.education.length > 0) {
+        const formEducation = parsedData.education.map(edu => {
+          let eduStr = edu.institution;
+          if (edu.degree) eduStr = `${edu.degree} - ${eduStr}`;
+          if (edu.field_of_study) eduStr += `, ${edu.field_of_study}`;
+          return eduStr;
+        });
+        setEducation(formEducation);
+      }
 
       setIsParsingResume(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
 
-      console.log('Resume parsed successfully:', parsedData);
+      console.log('Resume parsed successfully with AI:', parsedData);
     } catch (err: any) {
       console.error('Error parsing resume:', err);
       setError(err.message || 'Gagal memproses resume. Pastikan file PDF valid dan dapat dibaca.');

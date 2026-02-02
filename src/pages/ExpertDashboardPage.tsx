@@ -24,7 +24,7 @@ import {
   Camera
 } from "lucide-react";
 import { uploadAvatar } from "../services/storage";
-import { parseResume, type ParsedResumeData } from "../services/resumeParser";
+import { parseResumeWithAI, type AIParsedResume } from "../services/resumeParser";
 import { updateExpertProfile } from "../services/database";
 
 // Import komponen Shadcn
@@ -44,6 +44,29 @@ import type { SessionType, DigitalProduct } from '../App';
 import { projectId } from '../utils/supabase/info.tsx';
 import { Edit2, Trash2, Copy } from "lucide-react";
 import { ExpertTransactions } from '../components/ExpertTransactions';
+
+// Helper function to format period from AI-parsed dates
+function formatPeriod(startDate: string | null, endDate: string | null, isCurrent: boolean): string {
+  const formatDate = (date: string | null): string => {
+    if (!date) return '';
+    const [year, month] = date.split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthIdx = parseInt(month, 10) - 1;
+    return `${months[monthIdx] || ''} ${year}`;
+  };
+
+  const start = formatDate(startDate);
+  const end = isCurrent ? 'Present' : formatDate(endDate);
+
+  if (start && end) {
+    return `${start} - ${end}`;
+  } else if (start) {
+    return start;
+  } else if (end) {
+    return end;
+  }
+  return 'Present';
+}
 
 export function ExpertDashboardPage() {
   const navigate = useNavigate();
@@ -604,22 +627,42 @@ export function ExpertDashboardPage() {
     setError('');
 
     try {
-      const parsedData = await parseResume(file);
+      const parsedData = await parseResumeWithAI(file);
       setResumeFileName(file.name);
 
-      // Auto-fill form fields
+      // Auto-fill form fields with AI-parsed data
       if (parsedData.name) setProfileName(parsedData.name);
-      if (parsedData.company) setProfileCompany(parsedData.company);
-      if (parsedData.role) setProfileRole(parsedData.role);
-      if (parsedData.bio) setProfileBio(parsedData.bio);
+      if (parsedData.summary) setProfileBio(parsedData.summary);
       if (parsedData.skills && parsedData.skills.length > 0) {
         setProfileSkills(prev => [...new Set([...prev, ...parsedData.skills])]);
       }
-      if (parsedData.workExperience && parsedData.workExperience.length > 0) {
-        setWorkExperiences(parsedData.workExperience);
+
+      // Convert AI experiences to form format
+      if (parsedData.experiences && parsedData.experiences.length > 0) {
+        // Set company and role from first (current) experience
+        const currentExp = parsedData.experiences[0];
+        if (currentExp.company) setProfileCompany(currentExp.company);
+        if (currentExp.title) setProfileRole(currentExp.title);
+
+        // Convert experiences to form format
+        const formExperiences = parsedData.experiences.map(exp => ({
+          title: exp.title,
+          company: exp.location ? `${exp.company}, ${exp.location}` : exp.company,
+          period: formatPeriod(exp.start_date, exp.end_date, exp.is_current),
+          description: exp.description || ''
+        }));
+        setWorkExperiences(formExperiences);
       }
+
+      // Convert education to string format
       if (parsedData.education && parsedData.education.length > 0) {
-        setEducations(parsedData.education);
+        const formEducation = parsedData.education.map(edu => {
+          let eduStr = edu.institution;
+          if (edu.degree) eduStr = `${edu.degree} - ${eduStr}`;
+          if (edu.field_of_study) eduStr += `, ${edu.field_of_study}`;
+          return eduStr;
+        });
+        setEducations(formEducation);
       }
 
       setSaveSuccess(true);
