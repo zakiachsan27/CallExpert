@@ -39,4 +39,4 @@ jobs:
             git pull origin main
             npm ci
             npm run build
-            pm2 restart CallExpert || echo "PM2 not running, build complete"
+            pm2 restart CallExpert
