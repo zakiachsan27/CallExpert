@@ -48,21 +48,16 @@ export function DaftarMentorPage() {
         throw new Error('Format nomor WhatsApp tidak valid');
       }
 
-      // URL validation for portfolio (optional) - accepts partial URLs like instagram.com/user
-      if (portfolioLink) {
-        const urlRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-@]*)*\/?$/i;
-        if (!urlRegex.test(portfolioLink)) {
-          throw new Error('Format link portofolio tidak valid');
-        }
-      }
+      // Portfolio link - just accept as text (no URL validation needed)
+      // Removed strict URL validation as per user request
 
       // LinkedIn URL validation (optional)
       if (linkedinUrl && !linkedinUrl.includes('linkedin.com')) {
         throw new Error('Format LinkedIn URL tidak valid');
       }
 
-      // Submit to Supabase
-      const { error: submitError } = await supabase
+      // Submit to Supabase with timeout
+      const submitPromise = supabase
         .from('mentor_applications')
         .insert({
           name,
@@ -77,6 +72,13 @@ export function DaftarMentorPage() {
           youtube_url: youtubeUrl || null,
           status: 'pending'
         });
+
+      // Add timeout of 15 seconds to prevent stuck page
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout. Silakan coba lagi.')), 15000)
+      );
+
+      const { error: submitError } = await Promise.race([submitPromise, timeoutPromise]) as any;
 
       if (submitError) {
         if (submitError.code === '23505') {
