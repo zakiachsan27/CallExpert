@@ -1,13 +1,27 @@
 // Supabase Edge Function untuk mengirim newsletter
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { Resend } from 'npm:resend@3.0.0'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || 're_aTn4KwMG_HTfHs5YtjvVp44rvJK7NTbT3'
-const FROM_EMAIL = 'noreply@mentorinaja.com'
+const FROM_EMAIL = 'MentorinAja <onboarding@resend.dev>'
 const REPLY_TO_EMAIL = 'zakiachsan27@gmail.com'
 
-const resend = new Resend(RESEND_API_KEY)
+// Send email via Resend REST API (no SDK needed)
+async function sendEmail(params: { from: string; to: string; reply_to: string; subject: string; html: string }) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(params),
+  })
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.message || `Resend API error: ${res.status}`)
+  }
+  return await res.json()
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -142,7 +156,7 @@ serve(async (req) => {
               .replace(/{{name}}/g, recipient.name || 'Pengguna')
               .replace(/{{email}}/g, recipient.email)
 
-            const emailResult = await resend.emails.send({
+            const emailResult = await sendEmail({
               from: FROM_EMAIL,
               to: recipient.email,
               reply_to: REPLY_TO_EMAIL,
