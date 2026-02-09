@@ -20,7 +20,9 @@ import {
   BarChart3,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Menu,
+  ArrowLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -319,16 +321,25 @@ export function NewsletterAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Newsletter</h1>
-          <p className="text-sm text-gray-500">Kirim email ke mentor dan user terdaftar</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/admin/dashboard')}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+            title="Kembali ke Dashboard"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-slate-900">Newsletter</h1>
+            <p className="text-sm text-gray-500">Kirim email ke mentor dan user terdaftar</p>
+          </div>
         </div>
         <button
           onClick={() => openEditor()}
-          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold px-4 py-2 rounded-lg shadow-sm shadow-purple-200 transition"
+          className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold px-4 py-2 rounded-lg shadow-sm shadow-purple-200 transition w-full sm:w-auto"
         >
           <Plus className="w-4 h-4" />
           Buat Newsletter
@@ -344,7 +355,8 @@ export function NewsletterAdminPage() {
 
       {/* Newsletter List */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
@@ -424,12 +436,76 @@ export function NewsletterAdminPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden">
+          {newsletters.length === 0 ? (
+            <div className="px-4 py-12 text-center text-gray-500">
+              <Mail className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+              <p>Belum ada newsletter</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {newsletters.map((newsletter) => (
+                <div key={newsletter.id} className="p-4 hover:bg-gray-50 transition">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-slate-900 truncate">{newsletter.subject}</div>
+                      <div className="text-xs text-gray-500 line-clamp-1 mt-1">
+                        {newsletter.content.replace(/<[^>]*>/g, '').slice(0, 60)}...
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        {getTargetBadge(newsletter.target_audience)}
+                        {getStatusBadge(newsletter.status)}
+                      </div>
+                      <div className="text-xs text-gray-400 mt-2">
+                        Dibuat: {format(new Date(newsletter.created_at), 'dd MMM yyyy', { locale: id })}
+                        {newsletter.sent_at && (
+                          <span> • Dikirim: {format(new Date(newsletter.sent_at), 'dd MMM yyyy', { locale: id })}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {newsletter.status === 'sent' && (
+                        <button
+                          onClick={() => openStats(newsletter)}
+                          className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                          title="Statistik"
+                        >
+                          <BarChart3 className="w-4 h-4" />
+                        </button>
+                      )}
+                      {newsletter.status === 'draft' && (
+                        <>
+                          <button
+                            onClick={() => openEditor(newsletter)}
+                            className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(newsletter.id)}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Editor Modal */}
       {isEditorOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="font-bold text-lg text-slate-900">
@@ -552,8 +628,8 @@ export function NewsletterAdminPage() {
 
       {/* Stats Modal */}
       {isStatsOpen && selectedNewsletter && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-xl w-full max-w-md p-4 sm:p-6 mx-2">
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-bold text-lg text-slate-900">Statistik Newsletter</h2>
               <button

@@ -24,7 +24,8 @@ import {
   Mail,
   Phone,
   ExternalLink,
-  Mail as MailIcon
+  Mail as MailIcon,
+  Menu
 } from 'lucide-react';
 import { getAdminArticles, createArticle, updateArticle, deleteArticle, getCategories } from '../services/articleService';
 import { uploadArticleImage } from '../services/storage';
@@ -90,6 +91,7 @@ type MentorApplication = {
 export function AdminDashboardPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'transactions' | 'withdraw' | 'artikel' | 'pendaftar' | 'newsletter'>('transactions');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [withdrawRequests, setWithdrawRequests] = useState<WithdrawRequest[]>([]);
   const [mentorApplications, setMentorApplications] = useState<MentorApplication[]>([]);
@@ -705,16 +707,36 @@ export function AdminDashboardPage() {
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
 
-      {/* --- SIDEBAR --- */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex z-20">
-        <div className="h-16 flex items-center px-6 border-b border-gray-100">
-          <span className="text-xl font-bold italic text-purple-600">MentorinAja</span>
-          <span className="ml-2 text-[10px] bg-slate-900 text-white px-2 py-0.5 rounded uppercase tracking-wider">Admin</span>
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* --- SIDEBAR (Desktop + Mobile) --- */}
+      <aside className={`bg-white border-r border-gray-200 flex flex-col z-40 transition-transform duration-300 fixed md:static h-full w-64 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100">
+          <div className="flex items-center">
+            <span className="text-xl font-bold italic text-purple-600">MentorinAja</span>
+            <span className="ml-2 text-[10px] bg-slate-900 text-white px-2 py-0.5 rounded uppercase tracking-wider">Admin</span>
+          </div>
+          {/* Close button for mobile */}
+          <button
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="md:hidden p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           <button
-            onClick={() => setActiveTab('transactions')}
+            onClick={() => {
+              setActiveTab('transactions');
+              setIsMobileSidebarOpen(false);
+            }}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition text-left ${activeTab === 'transactions'
                 ? 'bg-purple-50 text-purple-700 font-bold border border-purple-100 shadow-sm'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
@@ -725,7 +747,10 @@ export function AdminDashboardPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab('withdraw')}
+            onClick={() => {
+              setActiveTab('withdraw');
+              setIsMobileSidebarOpen(false);
+            }}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition text-left relative ${activeTab === 'withdraw'
                 ? 'bg-purple-50 text-purple-700 font-bold border border-purple-100 shadow-sm'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
@@ -741,7 +766,10 @@ export function AdminDashboardPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab('artikel')}
+            onClick={() => {
+              setActiveTab('artikel');
+              setIsMobileSidebarOpen(false);
+            }}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition text-left ${activeTab === 'artikel'
                 ? 'bg-purple-50 text-purple-700 font-bold border border-purple-100 shadow-sm'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
@@ -752,7 +780,10 @@ export function AdminDashboardPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab('pendaftar')}
+            onClick={() => {
+              setActiveTab('pendaftar');
+              setIsMobileSidebarOpen(false);
+            }}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition text-left relative ${activeTab === 'pendaftar'
                 ? 'bg-purple-50 text-purple-700 font-bold border border-purple-100 shadow-sm'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
@@ -768,7 +799,10 @@ export function AdminDashboardPage() {
           </button>
 
           <button
-            onClick={() => navigate('/admin/newsletter')}
+            onClick={() => {
+              navigate('/admin/newsletter');
+              setIsMobileSidebarOpen(false);
+            }}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition text-left ${activeTab === 'newsletter'
                 ? 'bg-purple-50 text-purple-700 font-bold border border-purple-100 shadow-sm'
                 : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
@@ -793,10 +827,19 @@ export function AdminDashboardPage() {
       {/* --- MAIN CONTENT --- */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
 
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-10">
-          <h1 className="text-lg font-bold text-slate-800">
-            {activeTab === 'transactions' ? 'Daftar Transaksi' : activeTab === 'withdraw' ? 'Request Withdraw' : activeTab === 'artikel' ? 'Manajemen Artikel' : 'Pendaftar Mentor'}
-          </h1>
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 sticky top-0 z-10">
+          <div className="flex items-center gap-3">
+            {/* Hamburger menu for mobile */}
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="md:hidden p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <h1 className="text-base md:text-lg font-bold text-slate-800 truncate">
+              {activeTab === 'transactions' ? 'Daftar Transaksi' : activeTab === 'withdraw' ? 'Request Withdraw' : activeTab === 'artikel' ? 'Manajemen Artikel' : activeTab === 'pendaftar' ? 'Pendaftar Mentor' : 'Newsletter'}
+            </h1>
+          </div>
           <div className="flex items-center gap-3">
             <button
               onClick={fetchData}
