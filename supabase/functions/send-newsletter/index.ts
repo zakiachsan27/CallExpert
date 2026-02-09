@@ -3,7 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || 're_aTn4KwMG_HTfHs5YtjvVp44rvJK7NTbT3'
-const FROM_EMAIL = 'MentorinAja <onboarding@resend.dev>'
+const FROM_EMAIL = 'MentorinAja <noreply@mentorinaja.com>'
 const REPLY_TO_EMAIL = 'zakiachsan27@gmail.com'
 
 // Send email via Resend REST API (no SDK needed)
@@ -75,10 +75,16 @@ serve(async (req) => {
       )
     }
 
-    // Check if already sent
-    if (newsletter.status === 'sent') {
+    // Check if emails were already sent (by checking logs, not status field)
+    const { count: sentLogCount } = await supabaseAdmin
+      .from('newsletter_logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('newsletter_id', newsletterId)
+
+    if (sentLogCount && sentLogCount > 0) {
+      console.log('⚠️ Newsletter already has sent logs, skipping:', newsletterId)
       return new Response(
-        JSON.stringify({ success: false, message: 'Newsletter already sent' }),
+        JSON.stringify({ success: false, message: 'Newsletter sudah pernah dikirim' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       )
     }
@@ -141,27 +147,22 @@ serve(async (req) => {
       })
       .eq('id', newsletterId)
 
-    // Send emails (batch to avoid rate limiting)
-    const BATCH_SIZE = 50
+    // Send emails one by one with delay (Resend free tier: max 2 req/sec)
     const results = { sent: 0, failed: 0 }
 
-    for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-      const batch = recipients.slice(i, i + BATCH_SIZE)
-      
-      await Promise.all(
-        batch.map(async (recipient) => {
-          try {
-            // Personalize content
-            const personalizedContent = newsletter.content
-              .replace(/{{name}}/g, recipient.name || 'Pengguna')
-              .replace(/{{email}}/g, recipient.email)
+    for (const recipient of recipients) {
+      try {
+        // Personalize content
+        const personalizedContent = newsletter.content
+          .replace(/{{name}}/g, recipient.name || 'Pengguna')
+          .replace(/{{email}}/g, recipient.email)
 
-            const emailResult = await sendEmail({
-              from: FROM_EMAIL,
-              to: recipient.email,
-              reply_to: REPLY_TO_EMAIL,
-              subject: newsletter.subject,
-              html: `
+        await sendEmail({
+          from: FROM_EMAIL,
+          to: recipient.email,
+          reply_to: REPLY_TO_EMAIL,
+          subject: newsletter.subject,
+          html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -192,41 +193,37 @@ serve(async (req) => {
   </div>
 </body>
 </html>
-              `,
-            })
-
-            // Log success
-            await supabaseAdmin.from('newsletter_logs').insert({
-              newsletter_id: newsletterId,
-              recipient_id: recipient.id,
-              recipient_email: recipient.email,
-              status: 'sent',
-              sent_at: new Date().toISOString(),
-            })
-
-            results.sent++
-            console.log(`✅ Email sent to: ${recipient.email}`)
-          } catch (error) {
-            // Log failure
-            await supabaseAdmin.from('newsletter_logs').insert({
-              newsletter_id: newsletterId,
-              recipient_id: recipient.id,
-              recipient_email: recipient.email,
-              status: 'failed',
-              error_message: error.message,
-              sent_at: new Date().toISOString(),
-            })
-
-            results.failed++
-            console.error(`❌ Failed to send to ${recipient.email}:`, error.message)
-          }
+          `,
         })
-      )
 
-      // Small delay between batches
-      if (i + BATCH_SIZE < recipients.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // Log success
+        await supabaseAdmin.from('newsletter_logs').insert({
+          newsletter_id: newsletterId,
+          recipient_id: recipient.id,
+          recipient_email: recipient.email,
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+        })
+
+        results.sent++
+        console.log(`✅ Email sent to: ${recipient.email}`)
+      } catch (error: any) {
+        // Log failure
+        await supabaseAdmin.from('newsletter_logs').insert({
+          newsletter_id: newsletterId,
+          recipient_id: recipient.id,
+          recipient_email: recipient.email,
+          status: 'failed',
+          error_message: error?.message || String(error),
+          sent_at: new Date().toISOString(),
+        })
+
+        results.failed++
+        console.error(`❌ Failed to send to ${recipient.email}:`, error?.message || error)
       }
+
+      // Delay 600ms between emails (stay under 2 req/sec limit)
+      await new Promise(resolve => setTimeout(resolve, 600))
     }
 
     console.log('📧 Newsletter sending completed:', results)

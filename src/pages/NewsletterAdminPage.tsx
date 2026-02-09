@@ -16,6 +16,7 @@ import {
   Clock,
   CheckCircle,
   BarChart3,
+  Eye,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -51,6 +52,7 @@ export function NewsletterContent() {
   // Modal states
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedNewsletter, setSelectedNewsletter] = useState<Newsletter | null>(null);
   const [stats, setStats] = useState<NewsletterStats | null>(null);
 
@@ -161,9 +163,8 @@ export function NewsletterContent() {
             subject,
             content,
             target_audience: targetAudience,
-            status: 'sent',
+            status: 'draft',
             sent_by: adminUserId,
-            sent_at: new Date().toISOString()
           })
           .select('id')
           .single();
@@ -174,8 +175,9 @@ export function NewsletterContent() {
         const { error: updateError } = await supabase
           .from('newsletters')
           .update({
-            status: 'sent',
-            sent_at: new Date().toISOString()
+            subject,
+            content,
+            target_audience: targetAudience,
           })
           .eq('id', newsletterId);
 
@@ -374,13 +376,22 @@ export function NewsletterContent() {
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         {newsletter.status === 'sent' && (
-                          <button
-                            onClick={() => openStats(newsletter)}
-                            className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
-                            title="Statistik"
-                          >
-                            <BarChart3 className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => { setSelectedNewsletter(newsletter); setIsDetailOpen(true); }}
+                              className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                              title="Lihat Detail"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => openStats(newsletter)}
+                              className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                              title="Statistik"
+                            >
+                              <BarChart3 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                         {newsletter.status === 'draft' && (
                           <>
@@ -439,13 +450,22 @@ export function NewsletterContent() {
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {newsletter.status === 'sent' && (
-                        <button
-                          onClick={() => openStats(newsletter)}
-                          className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
-                          title="Statistik"
-                        >
-                          <BarChart3 className="w-4 h-4" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => { setSelectedNewsletter(newsletter); setIsDetailOpen(true); }}
+                            className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                            title="Lihat Detail"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => openStats(newsletter)}
+                            className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                            title="Statistik"
+                          >
+                            <BarChart3 className="w-4 h-4" />
+                          </button>
+                        </>
                       )}
                       {newsletter.status === 'draft' && (
                         <>
@@ -579,6 +599,82 @@ export function NewsletterContent() {
               >
                 {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 Kirim Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {isDetailOpen && selectedNewsletter && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h2 className="font-bold text-lg text-slate-900">Detail Newsletter</h2>
+              <button
+                onClick={() => { setIsDetailOpen(false); setSelectedNewsletter(null); }}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Meta info */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-500 mb-1">Target</p>
+                  {getTargetBadge(selectedNewsletter.target_audience)}
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-500 mb-1">Status</p>
+                  {getStatusBadge(selectedNewsletter.status)}
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-xs text-gray-500 mb-1">Dikirim</p>
+                  <p className="text-sm font-medium text-slate-900">
+                    {selectedNewsletter.sent_at
+                      ? format(new Date(selectedNewsletter.sent_at), 'dd MMM yyyy HH:mm', { locale: id })
+                      : '-'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Subject */}
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Subject</p>
+                <p className="text-lg font-bold text-slate-900">{selectedNewsletter.subject}</p>
+              </div>
+
+              {/* Content Preview */}
+              <div>
+                <p className="text-xs text-gray-500 mb-2">Konten</p>
+                <div
+                  className="prose prose-sm max-w-none p-4 bg-gray-50 rounded-lg border border-gray-200"
+                  dangerouslySetInnerHTML={{ __html: selectedNewsletter.content }}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-100">
+              <button
+                onClick={() => {
+                  setIsDetailOpen(false);
+                  openStats(selectedNewsletter);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
+              >
+                <BarChart3 className="w-4 h-4" />
+                Lihat Statistik
+              </button>
+              <button
+                onClick={() => { setIsDetailOpen(false); setSelectedNewsletter(null); }}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition"
+              >
+                Tutup
               </button>
             </div>
           </div>
