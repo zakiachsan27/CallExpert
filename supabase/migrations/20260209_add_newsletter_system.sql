@@ -43,42 +43,26 @@ ALTER TABLE newsletter_logs ENABLE ROW LEVEL SECURITY;
 -- Only admins can view newsletters
 CREATE POLICY "Admins can view all newsletters" ON newsletters
     FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
-            AND users.role = 'admin'
-        )
+        auth.jwt() ->> 'email' = 'admin@mentorinaja.com'
     );
 
 -- Only admins can create newsletters
 CREATE POLICY "Admins can create newsletters" ON newsletters
     FOR INSERT WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
-            AND users.role = 'admin'
-        )
+        auth.jwt() ->> 'email' = 'admin@mentorinaja.com'
     );
 
 -- Only admins can update newsletters (only drafts)
 CREATE POLICY "Admins can update draft newsletters" ON newsletters
     FOR UPDATE USING (
-        EXISTS (
-            SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
-            AND users.role = 'admin'
-        )
+        auth.jwt() ->> 'email' = 'admin@mentorinaja.com'
         AND status = 'draft'
     );
 
 -- Only admins can delete newsletters (only drafts)
 CREATE POLICY "Admins can delete draft newsletters" ON newsletters
     FOR DELETE USING (
-        EXISTS (
-            SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
-            AND users.role = 'admin'
-        )
+        auth.jwt() ->> 'email' = 'admin@mentorinaja.com'
         AND status = 'draft'
     );
 
@@ -86,11 +70,7 @@ CREATE POLICY "Admins can delete draft newsletters" ON newsletters
 -- Only admins can view logs
 CREATE POLICY "Admins can view newsletter logs" ON newsletter_logs
     FOR SELECT USING (
-        EXISTS (
-            SELECT 1 FROM users 
-            WHERE users.id = auth.uid() 
-            AND users.role = 'admin'
-        )
+        auth.jwt() ->> 'email' = 'admin@mentorinaja.com'
     );
 
 -- Service role can insert logs

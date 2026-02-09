@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import {
   LogOut,
@@ -39,6 +39,7 @@ import { TagInput } from '../components/admin/article/TagInput';
 import { SlugInput } from '../components/admin/article/SlugInput';
 import { analyzeSEO } from '../utils/seoAnalyzer';
 import { analyzeReadability } from '../utils/readabilityAnalyzer';
+import { NewsletterContent } from './NewsletterAdminPage';
 
 type Transaction = {
   id: string;
@@ -90,7 +91,9 @@ type MentorApplication = {
 
 export function AdminDashboardPage() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'transactions' | 'withdraw' | 'artikel' | 'pendaftar' | 'newsletter'>('transactions');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as 'transactions' | 'withdraw' | 'artikel' | 'pendaftar' | 'newsletter') || 'transactions';
+  const [activeTab, setActiveTab] = useState<'transactions' | 'withdraw' | 'artikel' | 'pendaftar' | 'newsletter'>(initialTab);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [withdrawRequests, setWithdrawRequests] = useState<WithdrawRequest[]>([]);
@@ -800,7 +803,7 @@ export function AdminDashboardPage() {
 
           <button
             onClick={() => {
-              navigate('/admin/newsletter');
+              setActiveTab('newsletter');
               setIsMobileSidebarOpen(false);
             }}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition text-left ${activeTab === 'newsletter'
@@ -1563,6 +1566,11 @@ export function AdminDashboardPage() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* VIEW: NEWSLETTER */}
+          {activeTab === 'newsletter' && (
+            <NewsletterContent />
           )}
         </div>
       </main>

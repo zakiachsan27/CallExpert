@@ -2,11 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import {
-  LogOut,
   Mail,
   Send,
   Save,
-  Eye,
   Users,
   UserCheck,
   Loader2,
@@ -18,14 +16,10 @@ import {
   Clock,
   CheckCircle,
   BarChart3,
-  RefreshCw,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  ArrowLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { RichTextEditor } from '../components/admin/article/RichTextEditor';
 
 type Newsletter = {
   id: string;
@@ -48,18 +42,18 @@ type NewsletterStats = {
   opened_count: number;
 };
 
-export function NewsletterAdminPage() {
-  const navigate = useNavigate();
+// Embeddable component for use inside AdminDashboardPage
+export function NewsletterContent() {
   const [newsletters, setNewsletters] = useState<Newsletter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Modal states
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [selectedNewsletter, setSelectedNewsletter] = useState<Newsletter | null>(null);
   const [stats, setStats] = useState<NewsletterStats | null>(null);
-  
+
   // Form states
   const [subject, setSubject] = useState('');
   const [content, setContent] = useState('');
@@ -68,16 +62,8 @@ export function NewsletterAdminPage() {
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
-    checkAuth();
     fetchNewsletters();
   }, []);
-
-  const checkAuth = () => {
-    const adminToken = localStorage.getItem('admin_access_token');
-    if (!adminToken) {
-      navigate('/admin', { replace: true });
-    }
-  };
 
   const fetchNewsletters = async () => {
     setIsLoading(true);
@@ -118,9 +104,8 @@ export function NewsletterAdminPage() {
     setIsSaving(true);
     try {
       const adminUserId = localStorage.getItem('admin_user_id');
-      
+
       if (selectedNewsletter) {
-        // Update existing
         const { error: updateError } = await supabase
           .from('newsletters')
           .update({
@@ -133,7 +118,6 @@ export function NewsletterAdminPage() {
 
         if (updateError) throw updateError;
       } else {
-        // Create new
         const { error: insertError } = await supabase
           .from('newsletters')
           .insert({
@@ -167,7 +151,6 @@ export function NewsletterAdminPage() {
 
     setIsSending(true);
     try {
-      // First save the newsletter
       const adminUserId = localStorage.getItem('admin_user_id');
       let newsletterId = selectedNewsletter?.id;
 
@@ -199,7 +182,6 @@ export function NewsletterAdminPage() {
         if (updateError) throw updateError;
       }
 
-      // Call edge function to send emails
       const { error: sendError } = await supabase.functions.invoke('send-newsletter', {
         body: { newsletterId }
       });
@@ -311,7 +293,7 @@ export function NewsletterAdminPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <Loader2 className="w-10 h-10 animate-spin text-purple-600 mx-auto mb-4" />
           <p className="text-slate-600">Memuat data...</p>
@@ -321,21 +303,11 @@ export function NewsletterAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+    <div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/admin/dashboard')}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
-            title="Kembali ke Dashboard"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-slate-900">Newsletter</h1>
-            <p className="text-sm text-gray-500">Kirim email ke mentor dan user terdaftar</p>
-          </div>
+        <div>
+          <p className="text-sm text-gray-500">Kirim email ke mentor dan user terdaftar</p>
         </div>
         <button
           onClick={() => openEditor()}
@@ -570,31 +542,18 @@ export function NewsletterAdminPage() {
                 />
               </div>
 
-              {/* Content */}
+              {/* Content - Rich Text Editor */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Konten (HTML)</label>
-                <textarea
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  placeholder="<p>Halo {{name}},</p><p>...</p>"
-                  rows={15}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Konten</label>
+                <RichTextEditor
+                  content={content}
+                  onChange={setContent}
+                  placeholder="Tulis konten newsletter..."
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Gunakan {'{{name}}'} untuk menyisipkan nama recipient
                 </p>
               </div>
-
-              {/* Preview */}
-              {content && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Preview</label>
-                  <div
-                    className="border border-gray-200 rounded-lg p-4 bg-gray-50 prose max-w-none"
-                    dangerouslySetInnerHTML={{ __html: content.replace(/{{name}}/g, 'John Doe') }}
-                  />
-                </div>
-              )}
             </div>
 
             {/* Footer */}
@@ -696,4 +655,21 @@ export function NewsletterAdminPage() {
       )}
     </div>
   );
+}
+
+// Standalone page wrapper (kept for backward compatibility)
+export function NewsletterAdminPage() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const adminToken = localStorage.getItem('admin_access_token');
+    if (!adminToken) {
+      navigate('/admin', { replace: true });
+      return;
+    }
+    // Redirect to dashboard with newsletter tab
+    navigate('/admin/dashboard?tab=newsletter', { replace: true });
+  }, [navigate]);
+
+  return null;
 }
