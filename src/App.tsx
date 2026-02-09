@@ -23,6 +23,7 @@ const PaymentSuccessPage = lazy(() => import('./pages/PaymentSuccessPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage').then(m => ({ default: m.AdminLoginPage })));
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })));
+const NewsletterAdminPage = lazy(() => import('./pages/NewsletterAdminPage').then(m => ({ default: m.NewsletterAdminPage })));
 const ArticleListPage = lazy(() => import('./pages/ArticleListPage').then(m => ({ default: m.ArticleListPage })));
 const ArticleDetailPage = lazy(() => import('./pages/ArticleDetailPage').then(m => ({ default: m.ArticleDetailPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
@@ -267,6 +268,7 @@ function App() {
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLoginPage />} />
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            <Route path="/admin/newsletter" element={<NewsletterAdminPage />} />
 
             {/* 404 Not Found */}
             <Route path="*" element={<NotFoundPage />} />

@@ -1,6 +1,7 @@
 // Supabase Edge Function untuk handle Midtrans webhook notification
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { sendMenteeReceipt, sendMentorNotification } from '../_shared/email.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -306,18 +307,55 @@ serve(async (req) => {
             id,
             user_id,
             expert_id,
-            session_types (name),
+            order_id,
+            booking_date,
+            booking_time,
+            meeting_link_id,
+            session_types (name, duration, price),
             experts (name, user_id),
-            users (name)
+            users (name, email)
           `)
           .eq('id', booking.id)
           .single()
 
         if (bookingDetails) {
           const userName = bookingDetails.users?.name || 'User'
+          const userEmail = bookingDetails.users?.email
           const expertName = bookingDetails.experts?.name || 'Expert'
           const expertUserId = bookingDetails.experts?.user_id
           const sessionName = bookingDetails.session_types?.name || 'Sesi Konsultasi'
+          const sessionDuration = bookingDetails.session_types?.duration || 60
+          const sessionPrice = bookingDetails.session_types?.price || 0
+          const orderId = bookingDetails.order_id
+          const bookingDate = bookingDetails.booking_date
+          const bookingTime = bookingDetails.booking_time
+          const meetingLinkId = bookingDetails.meeting_link_id
+
+          // Get mentor email from experts table
+          let mentorEmail = ''
+          if (expertUserId) {
+            const { data: expertData } = await supabaseAdmin
+              .from('experts')
+              .select('email')
+              .eq('user_id', expertUserId)
+              .single()
+            if (expertData?.email) {
+              mentorEmail = expertData.email
+            }
+          }
+
+          // Get meeting link if assigned
+          let meetingLink = ''
+          if (meetingLinkId) {
+            const { data: linkData } = await supabaseAdmin
+              .from('meeting_links_pool')
+              .select('meet_url')
+              .eq('id', meetingLinkId)
+              .single()
+            if (linkData?.meet_url) {
+              meetingLink = linkData.meet_url
+            }
+          }
 
           // Send notification to Expert (new booking)
           if (expertUserId) {
@@ -332,7 +370,7 @@ serve(async (req) => {
                   },
                   body: JSON.stringify({
                     userId: expertUserId,
-                    title: 'Booking Baru! 🎉',
+                    title: 'Booking Baru!',
                     body: `${userName} telah memesan ${sessionName}`,
                     data: { bookingId: booking.id },
                     type: 'booking'
@@ -358,7 +396,7 @@ serve(async (req) => {
                   },
                   body: JSON.stringify({
                     userId: bookingDetails.user_id,
-                    title: 'Pembayaran Berhasil! ✅',
+                    title: 'Pembayaran Berhasil!',
                     body: `Booking dengan ${expertName} telah dikonfirmasi`,
                     data: { bookingId: booking.id },
                     type: 'payment'
@@ -369,6 +407,40 @@ serve(async (req) => {
             } catch (notifError) {
               console.error('⚠️ Error sending notification to user:', notifError)
             }
+          }
+
+          // Send email notifications
+          console.log('📧 Sending email notifications')
+          try {
+            const emailData = {
+              bookingId: booking.id,
+              orderId: orderId,
+              menteeName: userName,
+              menteeEmail: userEmail || '',
+              mentorName: expertName,
+              mentorEmail: mentorEmail,
+              sessionType: sessionName,
+              duration: sessionDuration,
+              bookingDate: bookingDate,
+              bookingTime: bookingTime,
+              amount: sessionPrice,
+              meetingLink: meetingLink
+            }
+
+            // Send email to mentee
+            if (userEmail) {
+              await sendMenteeReceipt(emailData)
+              console.log('✅ Receipt email sent to mentee:', userEmail)
+            }
+
+            // Send email to mentor
+            if (mentorEmail) {
+              await sendMentorNotification(emailData)
+              console.log('✅ Notification email sent to mentor:', mentorEmail)
+            }
+          } catch (emailError) {
+            console.error('⚠️ Error sending email notifications:', emailError)
+            // Don't fail the webhook - booking is still confirmed
           }
         }
       } catch (notifSetupError) {

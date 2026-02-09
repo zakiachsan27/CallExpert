@@ -23,7 +23,8 @@ import {
   Users,
   Mail,
   Phone,
-  ExternalLink
+  ExternalLink,
+  Mail as MailIcon
 } from 'lucide-react';
 import { getAdminArticles, createArticle, updateArticle, deleteArticle, getCategories } from '../services/articleService';
 import { uploadArticleImage } from '../services/storage';
@@ -88,7 +89,7 @@ type MentorApplication = {
 
 export function AdminDashboardPage() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'transactions' | 'withdraw' | 'artikel' | 'pendaftar'>('transactions');
+  const [activeTab, setActiveTab] = useState<'transactions' | 'withdraw' | 'artikel' | 'pendaftar' | 'newsletter'>('transactions');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [withdrawRequests, setWithdrawRequests] = useState<WithdrawRequest[]>([]);
   const [mentorApplications, setMentorApplications] = useState<MentorApplication[]>([]);
@@ -764,6 +765,17 @@ export function AdminDashboardPage() {
                 {mentorApplications.filter(a => a.status === 'pending').length}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => navigate('/admin/newsletter')}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition text-left ${activeTab === 'newsletter'
+                ? 'bg-purple-50 text-purple-700 font-bold border border-purple-100 shadow-sm'
+                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
+              }`}
+          >
+            <MailIcon className="w-5 h-5" />
+            Newsletter
           </button>
         </nav>
 
