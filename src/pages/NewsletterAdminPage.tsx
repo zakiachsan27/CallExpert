@@ -307,7 +307,7 @@ export function NewsletterContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <p className="text-sm text-gray-500">Kirim email ke mentor dan user terdaftar</p>
+          <p className="text-sm text-gray-500">Kelola dan kirim email ke mentor dan user terdaftar</p>
         </div>
         <button
           onClick={() => openEditor()}
