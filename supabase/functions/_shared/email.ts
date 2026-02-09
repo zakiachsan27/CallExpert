@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || 're_Vv6LcZHb_HtXVP1HzAievyDZUge6nrkBa';
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || 're_aTn4KwMG_HTfHs5YtjvVp44rvJK7NTbT3';
 const FROM_EMAIL = 'noreply@mentorinaja.com';
 const REPLY_TO_EMAIL = 'zakiachsan27@gmail.com';
 

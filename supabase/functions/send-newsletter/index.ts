@@ -3,7 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { Resend } from 'npm:resend@3.0.0'
 
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || 're_Vv6LcZHb_HtXVP1HzAievyDZUge6nrkBa'
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || 're_aTn4KwMG_HTfHs5YtjvVp44rvJK7NTbT3'
 const FROM_EMAIL = 'noreply@mentorinaja.com'
 const REPLY_TO_EMAIL = 'zakiachsan27@gmail.com'
 
