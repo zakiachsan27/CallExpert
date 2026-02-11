@@ -1,19 +1,31 @@
-node_modules
-build
-dist
-.DS_Store
-*.log
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+
+# Environment
 .env
 .env.local
-nul
+.env.*.local
 
-# Firebase Service Account (SENSITIVE!)
-*-firebase-adminsdk-*.json
-google-services.json
+# IDE
+.vscode/
+.idea/
 
-# Android build artifacts
-android/.gradle
-android/app/build
-android/build
-*.apk
-*.aab
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Capacitor
+android/
+ios/
+
+# Playwright
+playwright-report/
+test-results/
