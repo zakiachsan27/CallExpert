@@ -69,31 +69,81 @@ const testimonials = [
   }
 ];
 
+const MAX_RETRIES = 3;
+const TIMEOUT_MS = 10000;
+
 export function HomePage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [experts, setExperts] = useState<Expert[]>([]);
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const testimonialsPerPage = 4;
   const maxIndex = Math.ceil(testimonials.length / testimonialsPerPage) - 1;
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [expertsData, articlesData] = await Promise.all([
-          getFeaturedExperts(4), // Only fetch 4 experts with essential data
-          getArticles({ status: 'published', limit: 3, orderBy: 'published_at', orderDir: 'desc' }),
-        ]);
-        setExperts(expertsData);
-        setArticles(articlesData);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
+  // Retry helper with exponential backoff
+  async function fetchWithRetry<T>(
+    fn: () => Promise<T>,
+    retries = 0
+  ): Promise<T> {
+    try {
+      return await fn();
+    } catch (err) {
+      console.warn(`[Retry ${retries + 1}/${MAX_RETRIES}] Error:`, err);
+      if (retries < MAX_RETRIES - 1) {
+        const delay = 1000 * (retries + 1); // 1s, 2s, 3s
+        await new Promise(r => setTimeout(r, delay));
+        return fetchWithRetry(fn, retries + 1);
       }
+      throw err;
     }
+  }
+
+  // Timeout wrapper
+  function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), ms)
+      ),
+    ]);
+  }
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('[HomePage] Loading featured experts and articles...');
+      
+      const [expertsData, articlesData] = await Promise.all([
+        withTimeout(
+          fetchWithRetry(() => getFeaturedExperts(4)),
+          TIMEOUT_MS
+        ),
+        withTimeout(
+          fetchWithRetry(() => getArticles({ status: 'published', limit: 3, orderBy: 'published_at', orderDir: 'desc' })),
+          TIMEOUT_MS
+        ),
+      ]);
+      
+      console.log('[HomePage] Loaded experts:', expertsData.length);
+      console.log('[HomePage] Loaded articles:', articlesData.length);
+      
+      setExperts(expertsData);
+      setArticles(articlesData);
+    } catch (err) {
+      console.error('[HomePage] Failed to load data:', err);
+      const message = err instanceof Error ? err.message : 'Gagal memuat data';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -307,6 +357,16 @@ export function HomePage() {
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-red-500 mb-3">{error}</p>
+              <button
+                onClick={loadData}
+                className="px-6 py-2 bg-brand-600 text-white rounded-lg font-medium hover:bg-brand-700 transition"
+              >
+                Coba Lagi
+              </button>
             </div>
           ) : experts.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
