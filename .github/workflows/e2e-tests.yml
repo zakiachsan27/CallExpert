@@ -30,7 +30,7 @@ jobs:
       - name: Run Playwright tests
         run: npx playwright test --project=chromium
         env:
-          PLAYWRIGHT_BASE_URL: https://mentorinaja.id
+          PLAYWRIGHT_BASE_URL: https://mentorinaja.com
       
       - name: Upload test report
         uses: actions/upload-artifact@v4
