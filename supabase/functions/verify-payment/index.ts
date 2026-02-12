@@ -191,32 +191,38 @@ serve(async (req) => {
       status: updatedBooking.status
     })
 
-    // Create Google Calendar meeting if payment is successful and no meeting link yet
-    if (paymentStatus === 'paid' && !updatedBooking.meeting_link) {
-      console.log('📅 Creating Google Calendar meeting for booking:', updatedBooking.id)
+    // Assign meeting link from pool if payment is successful and no link assigned yet
+    if (paymentStatus === 'paid' && !updatedBooking.meeting_link_id) {
+      console.log('🔗 Assigning meeting link for booking:', updatedBooking.id)
 
       try {
-        const createMeetingResponse = await fetch(
-          `${Deno.env.get('SUPABASE_URL')}/functions/v1/create-meeting`,
+        const assignLinkResponse = await fetch(
+          `${Deno.env.get('SUPABASE_URL')}/functions/v1/assign-meeting-link`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
             },
-            body: JSON.stringify({ booking_id: updatedBooking.id })
+            body: JSON.stringify({ bookingId: updatedBooking.id })
           }
         )
 
-        const meetingResult = await createMeetingResponse.json()
+        const assignResult = await assignLinkResponse.json()
 
-        if (meetingResult.success) {
-          console.log('✅ Google Meet created successfully:', meetingResult.meeting_link)
+        if (assignResult.success) {
+          console.log('✅ Meeting link assigned successfully:', assignResult.meetingLink)
+          
+          // Also update meeting_link column for easy access
+          await supabaseClient
+            .from('bookings')
+            .update({ meeting_link: assignResult.meetingLink })
+            .eq('id', updatedBooking.id)
         } else {
-          console.error('⚠️ Failed to create meeting (non-critical):', meetingResult.error)
+          console.error('⚠️ Failed to assign meeting link (non-critical):', assignResult.error)
         }
-      } catch (meetingError) {
-        console.error('⚠️ Error calling create-meeting function (non-critical):', meetingError)
+      } catch (assignError) {
+        console.error('⚠️ Error calling assign-meeting-link function (non-critical):', assignError)
       }
     }
 
