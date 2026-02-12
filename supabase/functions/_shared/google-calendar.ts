@@ -126,8 +126,10 @@ export class GoogleCalendarService {
     const accessToken = await getAccessToken(this.credentials);
     const timeZone = event.timeZone || "Asia/Jakarta";
 
-    // Note: Service accounts cannot invite attendees without Domain-Wide Delegation
-    // So we create the event without attendees and just get the Meet link
+    // Note: Service accounts cannot:
+    // - Invite attendees without Domain-Wide Delegation
+    // - Create Google Meet links (requires licensed user)
+    // So we create a simple calendar event for record-keeping
     const requestBody = {
       summary: event.summary,
       description: event.description,
@@ -139,23 +141,10 @@ export class GoogleCalendarService {
         dateTime: event.endDateTime,
         timeZone: timeZone,
       },
-      // Attendees removed - Service Account limitation
-      // attendees: event.attendees.map(a => ({
-      //   email: a.email,
-      //   displayName: a.displayName,
-      // })),
-      conferenceData: {
-        createRequest: {
-          requestId: crypto.randomUUID(),
-          conferenceSolutionKey: {
-            type: "hangoutsMeet",
-          },
-        },
-      },
     };
 
     const response = await fetch(
-      "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1",
+      "https://www.googleapis.com/calendar/v3/calendars/primary/events",
       {
         method: "POST",
         headers: {
