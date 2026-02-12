@@ -82,8 +82,35 @@ export function HomePage() {
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [whyIndex, setWhyIndex] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const testimonialsPerPage = 4;
   const maxIndex = Math.ceil(testimonials.length / testimonialsPerPage) - 1;
+
+  // Minimum swipe distance (in px)
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEndWhy = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    if (isLeftSwipe && whyIndex < whyReasons.length - 1) {
+      setWhyIndex(whyIndex + 1);
+    }
+    if (isRightSwipe && whyIndex > 0) {
+      setWhyIndex(whyIndex - 1);
+    }
+  };
 
   // Why MentorinAja data
   const whyReasons = [
@@ -282,7 +309,12 @@ export function HomePage() {
 
           {/* Mobile: Carousel */}
           <div className="md:hidden">
-            <div className="relative overflow-hidden">
+            <div 
+              className="relative overflow-hidden"
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEndWhy}
+            >
               <div 
                 className="flex transition-transform duration-300 ease-out"
                 style={{ transform: `translateX(-${whyIndex * 100}%)` }}
