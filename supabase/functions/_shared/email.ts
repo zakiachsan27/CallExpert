@@ -1,4 +1,4 @@
-import { Resend } from 'resend';
+import { Resend } from 'https://esm.sh/resend@2.0.0';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || 're_aTn4KwMG_HTfHs5YtjvVp44rvJK7NTbT3';
 const FROM_EMAIL = 'noreply@mentorinaja.com';

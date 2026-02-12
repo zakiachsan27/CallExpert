@@ -349,11 +349,11 @@ serve(async (req) => {
           if (meetingLinkId) {
             const { data: linkData } = await supabaseAdmin
               .from('meeting_links_pool')
-              .select('meet_url')
+              .select('meeting_link')
               .eq('id', meetingLinkId)
               .single()
-            if (linkData?.meet_url) {
-              meetingLink = linkData.meet_url
+            if (linkData?.meeting_link) {
+              meetingLink = linkData.meeting_link
             }
           }
 
