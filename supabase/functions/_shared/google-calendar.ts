@@ -1,7 +1,8 @@
 // Google Calendar API Helper
 // Uses Service Account for authentication with manual JWT signing
 
-import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64url.ts";
+import { encode as base64UrlEncode } from "https://deno.land/std@0.168.0/encoding/base64url.ts";
+import { decode as base64Decode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 interface CalendarEvent {
@@ -22,20 +23,24 @@ interface GoogleCredentials {
 // Convert PEM private key to CryptoKey
 async function importPrivateKey(pem: string): Promise<CryptoKey> {
   // Handle escaped newlines from environment variables
-  const normalizedPem = pem.replace(/\\n/g, "\n");
+  let normalizedPem = pem;
+  
+  // Replace literal \n with actual newlines
+  if (pem.includes("\\n")) {
+    normalizedPem = pem.replace(/\\n/g, "\n");
+  }
   
   // Remove PEM headers and all whitespace
   const pemContents = normalizedPem
-    .replace("-----BEGIN PRIVATE KEY-----", "")
-    .replace("-----END PRIVATE KEY-----", "")
+    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
+    .replace(/-----END PRIVATE KEY-----/g, "")
     .replace(/[\r\n\s]/g, "");
   
-  // Decode base64 using Deno's built-in decoder
-  const binaryString = atob(pemContents);
-  const binaryKey = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    binaryKey[i] = binaryString.charCodeAt(i);
-  }
+  console.log("PEM contents length:", pemContents.length);
+  console.log("PEM first 20 chars:", pemContents.substring(0, 20));
+  
+  // Decode base64 using Deno's standard library
+  const binaryKey = base64Decode(pemContents);
   
   return await crypto.subtle.importKey(
     "pkcs8",
@@ -67,8 +72,8 @@ async function createSignedJWT(credentials: GoogleCredentials): Promise<string> 
     iat: now,
   };
 
-  const encodedHeader = base64Encode(new TextEncoder().encode(JSON.stringify(header)));
-  const encodedPayload = base64Encode(new TextEncoder().encode(JSON.stringify(payload)));
+  const encodedHeader = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
+  const encodedPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
   const signatureInput = `${encodedHeader}.${encodedPayload}`;
 
   const privateKey = await importPrivateKey(credentials.private_key);
@@ -78,7 +83,7 @@ async function createSignedJWT(credentials: GoogleCredentials): Promise<string> 
     new TextEncoder().encode(signatureInput)
   );
 
-  const encodedSignature = base64Encode(new Uint8Array(signature));
+  const encodedSignature = base64UrlEncode(new Uint8Array(signature));
   return `${signatureInput}.${encodedSignature}`;
 }
 
