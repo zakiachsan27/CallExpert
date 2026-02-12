@@ -260,7 +260,7 @@ export function ExpertDetail({ expert, onBack, onBookingClick }: ExpertDetailPro
                               expert={expert}
                               selectedSessionType={sessionType}
                               onBookingComplete={(booking) => {
-                                console.log('Booking complete:', booking);
+                                // console.log('Booking complete:', booking);
                               }}
                             />
                           </Card>

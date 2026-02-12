@@ -36,12 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!Capacitor.isNativePlatform()) return;
 
     try {
-      console.log('🔐 Persisting session to Preferences...');
+      // console.log('🔐 Persisting session to Preferences...');
       await Preferences.set({
         key: 'mentorinaja-auth',
         value: JSON.stringify(session)
       });
-      console.log('🔐 Session persisted to Preferences successfully');
+      // console.log('🔐 Session persisted to Preferences successfully');
     } catch (error) {
       console.error('🔐 Error persisting session to Preferences:', error);
     }
@@ -49,15 +49,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Initialize auth state from Supabase session on mount
   useEffect(() => {
-    console.log('🔐 ====== AuthContext useEffect STARTING ======');
+    // console.log('🔐 ====== AuthContext useEffect STARTING ======');
     initializeAuth();
 
     // Set up auth state change listener for session persistence
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔐 ====== onAuthStateChange ======');
-      console.log('🔐 Event:', event);
-      console.log('🔐 Session:', session ? `user=${session.user?.id}` : 'null');
-      console.log('🔐 isRestoringSession.current:', isRestoringSession.current);
+      // console.log('🔐 ====== onAuthStateChange ======');
+      // console.log('🔐 Event:', event);
+      // console.log('🔐 Session:', session ? `user=${session.user?.id}` : 'null');
+      // console.log('🔐 isRestoringSession.current:', isRestoringSession.current);
 
       // CRITICAL: Persist session to Preferences on ANY session event (except sign out)
       // This ensures session is saved even on TOKEN_REFRESHED events
@@ -96,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             await Preferences.remove({ key: 'mentorinaja-auth' });
             await Preferences.remove({ key: 'mentorinaja-expert-info' });
-            console.log('🔐 Session and expert info cleared from Preferences on sign out');
+            // console.log('🔐 Session and expert info cleared from Preferences on sign out');
           } catch (e) {
             console.error('🔐 Error clearing Preferences:', e);
           }
@@ -114,37 +114,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const user = session.user;
     const token = session.access_token;
 
-    console.log('🔐 ====== restoreSession CALLED ======');
-    console.log('🔐 User ID:', user.id);
-    console.log('🔐 Token length:', token?.length);
+    // console.log('🔐 ====== restoreSession CALLED ======');
+    // console.log('🔐 User ID:', user.id);
+    // console.log('🔐 Token length:', token?.length);
 
     try {
       // Check if user is an expert
-      console.log('🔐 Checking if user is expert...');
+      // console.log('🔐 Checking if user is expert...');
       const expert = await getExpertByUserId(user.id);
 
       if (expert) {
         // User is an expert
-        console.log('🔐 ✅ User IS expert:', expert.id);
-        console.log('🔐 Setting expertAccessToken, userId, expertId...');
+        // console.log('🔐 ✅ User IS expert:', expert.id);
+        // console.log('🔐 Setting expertAccessToken, userId, expertId...');
         setExpertAccessToken(token);
         setUserId(user.id);
         setExpertId(expert.id);
         localStorage.setItem('expert_access_token', token);
         localStorage.setItem('expert_id', expert.id);
         localStorage.setItem('user_id', user.id);
-        console.log('🔐 ✅ Expert state SET - isExpertLoggedIn should be TRUE');
+        // console.log('🔐 ✅ Expert state SET - isExpertLoggedIn should be TRUE');
       } else {
         // Regular user
         const name = user.user_metadata?.name || user.email?.split('@')[0] || 'User';
-        console.log('🔐 ✅ User is regular user:', name);
+        // console.log('🔐 ✅ User is regular user:', name);
         setUserAccessToken(token);
         setUserId(user.id);
         setUserName(name);
         localStorage.setItem('user_access_token', token);
         localStorage.setItem('user_id', user.id);
         localStorage.setItem('user_name', name);
-        console.log('🔐 ✅ User state SET - isUserLoggedIn should be TRUE');
+        // console.log('🔐 ✅ User state SET - isUserLoggedIn should be TRUE');
       }
     } catch (error) {
       console.error('🔐 ❌ ERROR in restoreSession:', error);
@@ -152,8 +152,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const initializeAuth = async () => {
-    console.log('🔐 ====== INITIALIZING AUTH ======');
-    console.log('🔐 Platform:', Capacitor.getPlatform(), '| Native:', Capacitor.isNativePlatform());
+    // console.log('🔐 ====== INITIALIZING AUTH ======');
+    // console.log('🔐 Platform:', Capacitor.getPlatform(), '| Native:', Capacitor.isNativePlatform());
 
     try {
       // For native apps, check Preferences first for expert info
@@ -166,14 +166,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { value: sessionValue } = await Preferences.get({ key: 'mentorinaja-auth' });
           const { value: expertValue } = await Preferences.get({ key: 'mentorinaja-expert-info' });
 
-          console.log('🔐 Preferences check:');
-          console.log('   - mentorinaja-auth:', sessionValue ? `EXISTS (${sessionValue.length} chars)` : 'NOT FOUND');
-          console.log('   - mentorinaja-expert-info:', expertValue ? 'EXISTS' : 'NOT FOUND');
+          // console.log('🔐 Preferences check:');
+          // console.log('   - mentorinaja-auth:', sessionValue ? `EXISTS (${sessionValue.length} chars)` : 'NOT FOUND');
+          // console.log('   - mentorinaja-expert-info:', expertValue ? 'EXISTS' : 'NOT FOUND');
 
           storedSession = sessionValue;
           if (expertValue) {
             storedExpertInfo = JSON.parse(expertValue);
-            console.log('   - Expert info:', storedExpertInfo);
+            // console.log('   - Expert info:', storedExpertInfo);
           }
         } catch (e) {
           console.error('🔐 Error reading from Preferences:', e);
@@ -182,9 +182,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Get current session from Supabase
       const { data: { session }, error } = await supabase.auth.getSession();
-      console.log('🔐 Supabase getSession result:');
-      console.log('   - session:', session ? `EXISTS (user: ${session.user.id})` : 'NULL');
-      console.log('   - error:', error ? error.message : 'NONE');
+      // console.log('🔐 Supabase getSession result:');
+      // console.log('   - session:', session ? `EXISTS (user: ${session.user.id})` : 'NULL');
+      // console.log('   - error:', error ? error.message : 'NONE');
 
       if (error) throw error;
 
@@ -198,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (Capacitor.isNativePlatform() && storedExpertInfo?.expertId && storedExpertInfo?.userId) {
         // Supabase session not found, but we have stored expert info
         // This might happen if session expired but user should still be "logged in"
-        console.log('🔐 No Supabase session, but found stored expert info - attempting to refresh session');
+        // console.log('🔐 No Supabase session, but found stored expert info - attempting to refresh session');
 
         // Try to restore from Preferences
         try {
@@ -206,7 +206,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (value) {
             const sessionData = JSON.parse(value);
             if (sessionData?.refresh_token) {
-              console.log('🔐 Attempting to refresh session with stored refresh token...');
+              // console.log('🔐 Attempting to refresh session with stored refresh token...');
               const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
                 refresh_token: sessionData.refresh_token
               });
@@ -217,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 await Preferences.remove({ key: 'mentorinaja-auth' });
                 await Preferences.remove({ key: 'mentorinaja-expert-info' });
               } else if (refreshData.session) {
-                console.log('🔐 Session refreshed successfully!');
+                // console.log('🔐 Session refreshed successfully!');
                 // Session is now restored, restoreSession will be called by onAuthStateChange
               }
             }
@@ -233,8 +233,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('🔐 ❌ Auth initialization error:', error);
     } finally {
       setIsLoading(false);
-      console.log('🔐 ====== initializeAuth COMPLETE ======');
-      console.log('🔐 isLoading set to FALSE');
+      // console.log('🔐 ====== initializeAuth COMPLETE ======');
+      // console.log('🔐 isLoading set to FALSE');
     }
   };
 
@@ -321,7 +321,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               key: 'mentorinaja-auth',
               value: JSON.stringify(session)
             });
-            console.log('🔐 Session saved to Preferences in loginAsExpert');
+            // console.log('🔐 Session saved to Preferences in loginAsExpert');
           }
 
           // Also save expert info as fallback
@@ -329,13 +329,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             key: 'mentorinaja-expert-info',
             value: JSON.stringify({ expertId: expert.id, userId: authUserId })
           });
-          console.log('🔐 Expert info saved to Preferences');
+          // console.log('🔐 Expert info saved to Preferences');
 
           // VERIFY: Read back to confirm save worked
           const { value: verifySession } = await Preferences.get({ key: 'mentorinaja-auth' });
           const { value: verifyExpert } = await Preferences.get({ key: 'mentorinaja-expert-info' });
-          console.log('🔐 VERIFY - Session saved:', verifySession ? 'YES' : 'NO');
-          console.log('🔐 VERIFY - Expert info saved:', verifyExpert ? 'YES' : 'NO');
+          // console.log('🔐 VERIFY - Session saved:', verifySession ? 'YES' : 'NO');
+          // console.log('🔐 VERIFY - Expert info saved:', verifyExpert ? 'YES' : 'NO');
         } catch (saveError) {
           console.error('🔐 Error saving to Preferences:', saveError);
         }
@@ -382,7 +382,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           await Preferences.remove({ key: 'mentorinaja-auth' });
           await Preferences.remove({ key: 'mentorinaja-expert-info' });
-          console.log('🔐 Session and expert info cleared from Preferences');
+          // console.log('🔐 Session and expert info cleared from Preferences');
         } catch (clearError) {
           console.error('🔐 Error clearing Preferences:', clearError);
         }

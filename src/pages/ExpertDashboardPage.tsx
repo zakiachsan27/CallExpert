@@ -296,14 +296,14 @@ export function ExpertDashboardPage() {
         try {
           toast.loading('Mengupload foto...', { id: 'upload-avatar' });
           avatarUrl = await uploadAvatar(avatarFile, expertId);
-          console.log('Avatar uploaded successfully:', avatarUrl);
+          // console.log('Avatar uploaded successfully:', avatarUrl);
           setProfileAvatar(avatarUrl);
           setAvatarFile(null);
           toast.dismiss('upload-avatar');
 
           // Also update avatar_url in Supabase database for consistency
           await updateExpertProfile(expertId, { avatar_url: avatarUrl });
-          console.log('Avatar URL saved to database');
+          // console.log('Avatar URL saved to database');
         } catch (uploadErr: any) {
           toast.dismiss('upload-avatar');
           console.error('Error uploading avatar:', uploadErr);
@@ -350,7 +350,7 @@ export function ExpertDashboardPage() {
       }
 
       const responseData = await response.json();
-      console.log('Profile saved successfully:', responseData);
+      // console.log('Profile saved successfully:', responseData);
 
       // Also sync basic profile data to Supabase database
       if (expertId) {
@@ -614,15 +614,15 @@ export function ExpertDashboardPage() {
   };
 
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('[Resume Upload] File input changed');
+    // console.log('[Resume Upload] File input changed');
     const file = e.target.files?.[0];
 
     if (!file) {
-      console.log('[Resume Upload] No file selected');
+      // console.log('[Resume Upload] No file selected');
       return;
     }
 
-    console.log('[Resume Upload] File selected:', file.name, 'Size:', file.size);
+    // console.log('[Resume Upload] File selected:', file.name, 'Size:', file.size);
 
     // Validate file type
     if (!file.name.toLowerCase().endsWith('.pdf')) {
@@ -633,11 +633,11 @@ export function ExpertDashboardPage() {
     // Show loading immediately
     setIsParsingResume(true);
     setError('');
-    console.log('[Resume Upload] Starting AI parsing...');
+    // console.log('[Resume Upload] Starting AI parsing...');
 
     try {
       const parsedData = await parseResumeWithAI(file);
-      console.log('[Resume Upload] Parsing complete:', parsedData);
+      // console.log('[Resume Upload] Parsing complete:', parsedData);
       setResumeFileName(file.name);
 
       // Auto-fill form fields with AI-parsed data

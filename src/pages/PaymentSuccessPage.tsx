@@ -26,14 +26,14 @@ export default function PaymentSuccessPage() {
 
   const verifyPayment = async () => {
     try {
-      console.log('🔍 Verifying payment for booking:', bookingId);
+      // console.log('🔍 Verifying payment for booking:', bookingId);
 
       // Call verify-payment Edge Function
       const { data, error } = await supabase.functions.invoke('verify-payment', {
         body: { bookingId }
       });
 
-      console.log('📥 Verification response:', { data, error });
+      // console.log('📥 Verification response:', { data, error });
 
       if (error) {
         throw error;

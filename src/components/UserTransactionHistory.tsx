@@ -57,13 +57,13 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
     if (!userId) return;
 
     try {
-      console.log('Fetching user bookings for user:', userId);
+      // console.log('Fetching user bookings for user:', userId);
       const data = await getBookingsByUser(userId);
-      console.log('Bookings data:', data);
+      // console.log('Bookings data:', data);
       // Log first booking to debug price field
       if (data.length > 0) {
-        console.log('First booking sample:', data[0]);
-        console.log('Price fields:', {
+        // console.log('First booking sample:', data[0]);
+        // console.log('Price fields:', {
           totalPrice: data[0].totalPrice,
           total_price: data[0].total_price,
           price: data[0].price,

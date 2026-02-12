@@ -43,7 +43,7 @@ export function InvoicePage() {
   // Auto-trigger payment popup for pending bookings (only once)
   useEffect(() => {
     if (booking && booking.payment_status === 'waiting' && isSnapLoaded && !isProcessingPayment && !hasTriggeredAutoPayment) {
-      console.log('Auto-triggering payment for new booking');
+      // console.log('Auto-triggering payment for new booking');
       setHasTriggeredAutoPayment(true);
       const timer = setTimeout(() => {
         handlePayNow();
@@ -67,7 +67,7 @@ export function InvoicePage() {
 
       // If not found, try by booking ID (UUID format)
       if (!bookingData && orderId.includes('-')) {
-        console.log('Order ID not found, trying as booking ID:', orderId);
+        // console.log('Order ID not found, trying as booking ID:', orderId);
         bookingData = await getBookingById(orderId);
       }
 
@@ -91,13 +91,13 @@ export function InvoicePage() {
 
     const poll = async (): Promise<boolean> => {
       attempts++;
-      console.log(`Polling payment status, attempt ${attempts}/${maxAttempts}`);
+      // console.log(`Polling payment status, attempt ${attempts}/${maxAttempts}`);
 
       try {
         const bookingData = await getBookingByOrderId(orderId!);
 
         if (bookingData && bookingData.payment_status === 'paid') {
-          console.log('Payment confirmed as paid');
+          // console.log('Payment confirmed as paid');
           setBooking(bookingData);
           setIsCheckingPayment(false);
           return true;
@@ -108,7 +108,7 @@ export function InvoicePage() {
           return poll();
         }
 
-        console.log('Payment status polling timed out, refreshing anyway');
+        // console.log('Payment status polling timed out, refreshing anyway');
         if (bookingData) {
           setBooking(bookingData);
         }
@@ -137,11 +137,11 @@ export function InvoicePage() {
 
       openSnap(snapData.token, {
         onSuccess: async (result) => {
-          console.log('Payment success:', result);
+          // console.log('Payment success:', result);
           navigate(`/payment/success?booking_id=${booking.id}`);
         },
         onPending: async (result) => {
-          console.log('Payment pending:', result);
+          // console.log('Payment pending:', result);
           // Don't redirect to success - payment is not complete yet
           // Refresh booking data to show updated payment instructions
           setIsProcessingPayment(false);
@@ -154,7 +154,7 @@ export function InvoicePage() {
           setIsProcessingPayment(false);
         },
         onClose: () => {
-          console.log('Payment popup closed');
+          // console.log('Payment popup closed');
           setIsProcessingPayment(false);
           // Refresh to check if any payment method was selected
           fetchBooking();

@@ -38,19 +38,19 @@ class PushNotificationService {
    */
   async initialize(): Promise<boolean> {
     if (!this.isNativePlatform()) {
-      console.log('Push notifications only available on native platforms');
+      // console.log('Push notifications only available on native platforms');
       return false;
     }
 
     if (this.isInitialized) {
-      console.log('Push notifications already initialized');
+      // console.log('Push notifications already initialized');
       return true;
     }
 
     try {
       // Check current permission status
       let permStatus = await PushNotifications.checkPermissions();
-      console.log('Push notification permission status:', permStatus.receive);
+      // console.log('Push notification permission status:', permStatus.receive);
 
       // Request permission if needed
       if (permStatus.receive === 'prompt') {
@@ -69,7 +69,7 @@ class PushNotificationService {
       this.setupListeners();
       this.isInitialized = true;
 
-      console.log('Push notifications initialized successfully');
+      // console.log('Push notifications initialized successfully');
       return true;
     } catch (error) {
       console.error('Error initializing push notifications:', error);
@@ -83,7 +83,7 @@ class PushNotificationService {
   private setupListeners(): void {
     // Token received - save to database
     PushNotifications.addListener('registration', async (token) => {
-      console.log('Push registration success, token:', token.value);
+      // console.log('Push registration success, token:', token.value);
       this.currentToken = token.value;
       await this.saveDeviceToken(token.value);
     });
@@ -95,7 +95,7 @@ class PushNotificationService {
 
     // Notification received while app is in foreground
     PushNotifications.addListener('pushNotificationReceived', async (notification) => {
-      console.log('Push notification received in foreground:', notification);
+      // console.log('Push notification received in foreground:', notification);
 
       // Show local notification since app is in foreground
       // (Push notifications don't show automatically when app is open)
@@ -111,14 +111,14 @@ class PushNotificationService {
 
     // Notification tapped (app was in background or closed)
     PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-      console.log('Push notification action performed:', action);
+      // console.log('Push notification action performed:', action);
       const data = action.notification.data as NotificationData;
       this.handleNotificationTap(data);
     });
 
     // Local notification tapped
     LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
-      console.log('Local notification action performed:', action);
+      // console.log('Local notification action performed:', action);
       const data = action.notification.extra as NotificationData;
       if (data) {
         this.handleNotificationTap(data);
@@ -133,7 +133,7 @@ class PushNotificationService {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.log('No user logged in, skipping token save');
+        // console.log('No user logged in, skipping token save');
         return;
       }
 
@@ -155,7 +155,7 @@ class PushNotificationService {
       if (error) {
         console.error('Error saving device token:', error);
       } else {
-        console.log('Device token saved successfully');
+        // console.log('Device token saved successfully');
       }
     } catch (error) {
       console.error('Error in saveDeviceToken:', error);
@@ -179,7 +179,7 @@ class PushNotificationService {
       if (error) {
         console.error('Error deactivating device token:', error);
       } else {
-        console.log('Device token deactivated');
+        // console.log('Device token deactivated');
       }
     } catch (error) {
       console.error('Error in deactivateDeviceToken:', error);
@@ -213,7 +213,7 @@ class PushNotificationService {
   private handleNotificationTap(data: NotificationData): void {
     if (!data?.type) return;
 
-    console.log('Handling notification tap:', data);
+    // console.log('Handling notification tap:', data);
 
     switch (data.type) {
       case 'chat':
@@ -242,7 +242,7 @@ class PushNotificationService {
         break;
 
       default:
-        console.log('Unknown notification type:', data.type);
+        // console.log('Unknown notification type:', data.type);
     }
   }
 

@@ -161,12 +161,12 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
       const transactionsData = await transactionsResponse.json();
 
       // DEBUG: Log all transactions from API
-      console.log('📊 All transactions from API:', transactionsData.transactions);
-      console.log('📊 Transactions count:', transactionsData.transactions?.length || 0);
+      // console.log('📊 All transactions from API:', transactionsData.transactions);
+      // console.log('📊 Transactions count:', transactionsData.transactions?.length || 0);
 
       // Log each transaction with payment status
       transactionsData.transactions?.forEach((t: any, i: number) => {
-        console.log(`Transaction ${i + 1}:`, {
+        // console.log(`Transaction ${i + 1}:`, {
           id: t.id,
           orderId: t.orderId,
           userName: t.userName,
@@ -211,7 +211,7 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
           }));
         }
       } catch (withdrawErr) {
-        console.log('No withdraw endpoint or error fetching withdrawals');
+        // console.log('No withdraw endpoint or error fetching withdrawals');
       }
 
       // Combine and sort by date
@@ -999,11 +999,11 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
 
         {(() => {
           // Include paid transactions AND withdraw requests
-          console.log('🔍 Total transactions before filter:', transactions.length);
-          console.log('🔍 Transactions paymentStatus:', transactions.map(t => ({ id: t.id, paymentStatus: t.paymentStatus, date: t.date })));
+          // console.log('🔍 Total transactions before filter:', transactions.length);
+          // console.log('🔍 Transactions paymentStatus:', transactions.map(t => ({ id: t.id, paymentStatus: t.paymentStatus, date: t.date })));
 
           const displayTransactions = transactions.filter(t => t.paymentStatus === 'paid' || t.type === 'withdraw');
-          console.log('🔍 Transactions after filter (paid only):', displayTransactions.length);
+          // console.log('🔍 Transactions after filter (paid only):', displayTransactions.length);
 
           const visibleTransactions = displayTransactions.slice(0, visibleCount);
           const hasMore = displayTransactions.length > visibleCount;

@@ -40,8 +40,8 @@ const PageLoader = () => (
 const isNativePlatform = Capacitor.isNativePlatform();
 
 // Log environment info for debugging
-console.log('App loaded successfully with routing');
-console.log('Platform:', Capacitor.getPlatform(), '| Native:', isNativePlatform);
+// console.log('App loaded successfully with routing');
+// console.log('Platform:', Capacitor.getPlatform(), '| Native:', isNativePlatform);
 
 // Export types for use in components
 export type SessionType = {

@@ -54,12 +54,12 @@ export function MidtransPayment({
       // Open Snap popup
       openSnap(snapData.token, {
         onSuccess: (result) => {
-          console.log('Payment success:', result);
+          // console.log('Payment success:', result);
           setPaymentStatus('paid');
           onPaymentSuccess();
         },
         onPending: (result) => {
-          console.log('Payment pending:', result);
+          // console.log('Payment pending:', result);
           setPaymentStatus('pending');
           setError('Pembayaran Anda sedang diproses. Silakan cek status booking Anda.');
         },
@@ -71,7 +71,7 @@ export function MidtransPayment({
           onPaymentError(errorMessage);
         },
         onClose: () => {
-          console.log('Payment popup closed');
+          // console.log('Payment popup closed');
           setIsProcessing(false);
         },
       });

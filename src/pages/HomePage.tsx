@@ -116,7 +116,7 @@ export function HomePage() {
     setError(null);
     
     try {
-      console.log('[HomePage] Loading featured experts and articles...');
+      // console.log('[HomePage] Loading featured experts and articles...');
       
       const [expertsData, articlesData] = await Promise.all([
         withTimeout(
@@ -129,8 +129,8 @@ export function HomePage() {
         ),
       ]);
       
-      console.log('[HomePage] Loaded experts:', expertsData.length);
-      console.log('[HomePage] Loaded articles:', articlesData.length);
+      // console.log('[HomePage] Loaded experts:', expertsData.length);
+      // console.log('[HomePage] Loaded articles:', articlesData.length);
       
       setExperts(expertsData);
       setArticles(articlesData);

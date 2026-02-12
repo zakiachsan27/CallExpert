@@ -26,10 +26,10 @@ export function ExpertLoginPage() {
 
   // CRITICAL: Redirect to dashboard if already logged in as expert
   useEffect(() => {
-    console.log('🔐 ExpertLoginPage: authLoading=', authLoading, 'isExpertLoggedIn=', isExpertLoggedIn);
+    // console.log('🔐 ExpertLoginPage: authLoading=', authLoading, 'isExpertLoggedIn=', isExpertLoggedIn);
 
     if (!authLoading && isExpertLoggedIn) {
-      console.log('🔐 ExpertLoginPage: Already logged in, redirecting to dashboard');
+      // console.log('🔐 ExpertLoginPage: Already logged in, redirecting to dashboard');
       navigate(returnUrl, { replace: true });
     }
   }, [authLoading, isExpertLoggedIn, navigate, returnUrl]);

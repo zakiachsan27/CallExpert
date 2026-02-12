@@ -12,16 +12,16 @@ async function initApp() {
   // Set platform attribute on HTML for CSS targeting
   const platform = Capacitor.getPlatform();
   document.documentElement.setAttribute('data-platform', platform);
-  console.log('📱 Platform:', platform);
+  // console.log('📱 Platform:', platform);
 
   // Native platform specific initialization - BEFORE rendering
   if (Capacitor.isNativePlatform()) {
-    console.log('📱 Native platform detected, initializing...');
+    // console.log('📱 Native platform detected, initializing...');
 
     // CRITICAL: Initialize auth storage from Preferences BEFORE anything else
     // This loads the stored session into memory so Supabase can access it
     await initializeAuthStorage();
-    console.log('📱 Auth storage initialized');
+    // console.log('📱 Auth storage initialized');
   }
 
   // Now render the app (auth context will check session)
@@ -38,19 +38,19 @@ async function initApp() {
 
     // Listen for app state changes (resume from background)
     CapApp.addListener('appStateChange', async ({ isActive }) => {
-      console.log('📱 App state change:', isActive ? 'active' : 'background');
+      // console.log('📱 App state change:', isActive ? 'active' : 'background');
 
       if (isActive) {
         // When app becomes active, refresh the session
         // This ensures the session is properly restored after app was in background
         try {
           const { data: { session }, error } = await supabase.auth.getSession();
-          console.log('📱 Session check on resume:', session ? 'exists' : 'null', error ? `error: ${error.message}` : '');
+          // console.log('📱 Session check on resume:', session ? 'exists' : 'null', error ? `error: ${error.message}` : '');
 
           if (session) {
             // Trigger a token refresh to ensure we have the latest token
             await supabase.auth.refreshSession();
-            console.log('📱 Session refreshed on app resume');
+            // console.log('📱 Session refreshed on app resume');
           }
         } catch (error) {
           console.error('📱 Error checking session on resume:', error);
@@ -58,7 +58,7 @@ async function initApp() {
       }
     });
 
-    console.log('📱 App state listener registered');
+    // console.log('📱 App state listener registered');
   }
 }
 

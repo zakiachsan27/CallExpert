@@ -294,7 +294,7 @@ export async function getExpertBySlug(slug: string): Promise<Expert | null> {
     ]);
 
     // Debug logging to verify database queries
-    console.log('📊 Database Query Results for expert:', expert.name, {
+    // console.log('📊 Database Query Results for expert:', expert.name, {
       expertId: expert.id,
       slug: expert.slug,
       sessionTypesFromDB: sessionTypes.data?.length || 0,
@@ -420,7 +420,7 @@ export async function updateExpertAvailableNow(
       .eq('id', expertId);
 
     if (error) throw error;
-    console.log(`Expert ${expertId} available_now set to ${availableNow}`);
+    // console.log(`Expert ${expertId} available_now set to ${availableNow}`);
   } catch (error) {
     console.error('Error updating expert available_now status:', error);
     throw error;
@@ -960,7 +960,7 @@ export async function createUser(data: { id: string; email: string; name: string
     if (error) {
       // If it's a duplicate key error, ignore it - user already exists
       if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('conflict')) {
-        console.log('User already exists, skipping create');
+        // console.log('User already exists, skipping create');
         return;
       }
       throw error;
@@ -968,7 +968,7 @@ export async function createUser(data: { id: string; email: string; name: string
   } catch (error: any) {
     // Don't throw for "user exists" scenarios
     if (error?.code === '23505' || error?.code === 'PGRST116') {
-      console.log('User already exists or not found scenario, continuing...');
+      // console.log('User already exists or not found scenario, continuing...');
       return;
     }
     console.error('Error creating user:', error);
@@ -1150,7 +1150,7 @@ export async function startSession(bookingId: string, byType: 'user' | 'expert')
     if (existingSession) {
       // If session is already ended, just return it without updating
       if (existingSession.status === 'ended' || existingSession.ended_at) {
-        console.log('Session already ended, returning as-is');
+        // console.log('Session already ended, returning as-is');
         return existingSession;
       }
 
@@ -1248,7 +1248,7 @@ export function subscribeToMessages(
   bookingId: string,
   onNewMessage: (message: ChatMessage) => void
 ): ReturnType<typeof supabase.channel> {
-  console.log('🔔 Creating realtime subscription for booking:', bookingId);
+  // console.log('🔔 Creating realtime subscription for booking:', bookingId);
 
   const channelName = `chat-${bookingId}`;
 
@@ -1256,7 +1256,7 @@ export function subscribeToMessages(
   const existingChannels = supabase.getChannels();
   const existingChannel = existingChannels.find(ch => ch.topic === `realtime:${channelName}`);
   if (existingChannel) {
-    console.log('🔄 Removing existing channel:', channelName);
+    // console.log('🔄 Removing existing channel:', channelName);
     supabase.removeChannel(existingChannel);
   }
 
@@ -1271,24 +1271,24 @@ export function subscribeToMessages(
         filter: `booking_id=eq.${bookingId}`
       },
       (payload) => {
-        console.log('📨 New message received via realtime:', payload);
-        console.log('📨 Message data:', payload.new);
+        // console.log('📨 New message received via realtime:', payload);
+        // console.log('📨 Message data:', payload.new);
         onNewMessage(payload.new as ChatMessage);
       }
     )
     .subscribe((status, err) => {
-      console.log('💬 Chat subscription status:', status);
+      // console.log('💬 Chat subscription status:', status);
       if (err) {
         console.error('❌ Subscription error:', err);
       }
       if (status === 'SUBSCRIBED') {
-        console.log('✅ Successfully subscribed to chat messages for booking:', bookingId);
+        // console.log('✅ Successfully subscribed to chat messages for booking:', bookingId);
       } else if (status === 'CHANNEL_ERROR') {
         console.error('❌ Channel error - realtime subscription failed');
       } else if (status === 'TIMED_OUT') {
         console.error('❌ Subscription timed out');
       } else if (status === 'CLOSED') {
-        console.log('🔒 Channel closed');
+        // console.log('🔒 Channel closed');
       }
     });
 
@@ -1310,14 +1310,14 @@ export function subscribeToSessionStatus(
         filter: `booking_id=eq.${bookingId}`
       },
       (payload) => {
-        console.log('🔄 Session status changed via realtime:', payload.new);
+        // console.log('🔄 Session status changed via realtime:', payload.new);
         onStatusChange(payload.new as ActiveSession);
       }
     )
     .subscribe((status) => {
-      console.log('📡 Session subscription status:', status);
+      // console.log('📡 Session subscription status:', status);
       if (status === 'SUBSCRIBED') {
-        console.log('✅ Successfully subscribed to session status for booking:', bookingId);
+        // console.log('✅ Successfully subscribed to session status for booking:', bookingId);
       }
     });
 

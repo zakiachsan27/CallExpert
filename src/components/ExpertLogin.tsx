@@ -27,7 +27,7 @@ export function ExpertLogin({ onLoginSuccess, onBack }: ExpertLoginProps) {
 
     try {
       // Login using Supabase Auth
-      console.log('Attempting expert login for:', email);
+      // console.log('Attempting expert login for:', email);
       const response = await fetch(`https://${projectId}.supabase.co/auth/v1/token?grant_type=password`, {
         method: 'POST',
         headers: {
@@ -38,7 +38,7 @@ export function ExpertLogin({ onLoginSuccess, onBack }: ExpertLoginProps) {
       });
 
       const data = await response.json();
-      console.log('Expert login response:', { ok: response.ok, data });
+      // console.log('Expert login response:', { ok: response.ok, data });
 
       if (!response.ok) {
         setError(data.error_description || data.message || 'Login failed');
@@ -47,7 +47,7 @@ export function ExpertLogin({ onLoginSuccess, onBack }: ExpertLoginProps) {
       }
 
       if (data.access_token && data.user?.id) {
-        console.log('Expert login successful for user:', data.user.id);
+        // console.log('Expert login successful for user:', data.user.id);
         onLoginSuccess(data.access_token, data.user.id);
       }
     } catch (err) {

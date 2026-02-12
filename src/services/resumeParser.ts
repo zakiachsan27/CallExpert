@@ -6,7 +6,7 @@ import { supabase } from './supabase';
 const PDFJS_VERSION = '4.10.38'; // Match installed version
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.mjs`;
 
-console.log('[ResumeParser] PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+// console.log('[ResumeParser] PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
 
 // =============================================
 // AI-BASED RESUME PARSING (Recommended)
@@ -44,8 +44,8 @@ export interface AIParsedResume {
 export async function parseResumeWithAI(file: File): Promise<AIParsedResume> {
   const text = await extractTextFromPDF(file);
 
-  console.log('=== AI PARSING RESUME ===');
-  console.log('Text length:', text.length);
+  // console.log('=== AI PARSING RESUME ===');
+  // console.log('Text length:', text.length);
 
   try {
     // Call the Edge Function
@@ -63,11 +63,11 @@ export async function parseResumeWithAI(file: File): Promise<AIParsedResume> {
       throw new Error(data?.error || 'AI parsing failed');
     }
 
-    console.log('=== AI PARSED RESULT ===');
-    console.log('Name:', data.data.name);
-    console.log('Experiences:', data.data.experiences?.length || 0);
-    console.log('Education:', data.data.education?.length || 0);
-    console.log('Skills:', data.data.skills?.length || 0);
+    // console.log('=== AI PARSED RESULT ===');
+    // console.log('Name:', data.data.name);
+    // console.log('Experiences:', data.data.experiences?.length || 0);
+    // console.log('Education:', data.data.education?.length || 0);
+    // console.log('Skills:', data.data.skills?.length || 0);
 
     return data.data as AIParsedResume;
 
@@ -164,30 +164,30 @@ export interface ParsedResumeData {
  */
 export async function extractTextFromPDF(file: File): Promise<string> {
   try {
-    console.log('[PDF Extract] Starting for:', file.name, 'Size:', file.size);
-    console.log('[PDF Extract] Worker src:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+    // console.log('[PDF Extract] Starting for:', file.name, 'Size:', file.size);
+    // console.log('[PDF Extract] Worker src:', pdfjsLib.GlobalWorkerOptions.workerSrc);
 
     const arrayBuffer = await file.arrayBuffer();
-    console.log('[PDF Extract] ArrayBuffer created, size:', arrayBuffer.byteLength);
+    // console.log('[PDF Extract] ArrayBuffer created, size:', arrayBuffer.byteLength);
 
-    console.log('[PDF Extract] Loading PDF document...');
+    // console.log('[PDF Extract] Loading PDF document...');
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
 
     // Add progress logging
     loadingTask.onProgress = (progress: { loaded: number; total: number }) => {
       if (progress.total > 0) {
-        console.log('[PDF Extract] Loading progress:', Math.round((progress.loaded / progress.total) * 100) + '%');
+        // console.log('[PDF Extract] Loading progress:', Math.round((progress.loaded / progress.total) * 100) + '%');
       }
     };
 
     const pdf = await loadingTask.promise;
-    console.log('[PDF Extract] PDF loaded successfully, pages:', pdf.numPages);
+    // console.log('[PDF Extract] PDF loaded successfully, pages:', pdf.numPages);
 
     let fullText = '';
 
     // Extract text from all pages
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      console.log('[PDF Extract] Extracting page:', pageNum, '/', pdf.numPages);
+      // console.log('[PDF Extract] Extracting page:', pageNum, '/', pdf.numPages);
       const page = await pdf.getPage(pageNum);
       const textContent = await page.getTextContent();
 
@@ -212,8 +212,8 @@ export async function extractTextFromPDF(file: File): Promise<string> {
       fullText += pageText + '\n\n';
     }
 
-    console.log('[PDF Extract] Extraction complete, text length:', fullText.length);
-    console.log('[PDF Extract] Preview:', fullText.substring(0, 200));
+    // console.log('[PDF Extract] Extraction complete, text length:', fullText.length);
+    // console.log('[PDF Extract] Preview:', fullText.substring(0, 200));
     return fullText;
   } catch (error: any) {
     console.error('[PDF Extract] Error extracting text from PDF:', error);
@@ -240,8 +240,8 @@ export async function extractTextFromPDF(file: File): Promise<string> {
 export async function parseResume(file: File): Promise<ParsedResumeData> {
   const text = await extractTextFromPDF(file);
 
-  console.log('=== PARSING RESUME ===');
-  console.log('Full text preview (first 500 chars):', text.substring(0, 500));
+  // console.log('=== PARSING RESUME ===');
+  // console.log('Full text preview (first 500 chars):', text.substring(0, 500));
 
   const parsedData = {
     name: extractName(text),
@@ -259,13 +259,13 @@ export async function parseResume(file: File): Promise<ParsedResumeData> {
     achievements: extractAchievements(text),
   };
 
-  console.log('=== PARSED DATA ===');
-  console.log('Name:', parsedData.name);
-  console.log('Email:', parsedData.email);
-  console.log('Company:', parsedData.company);
-  console.log('Role:', parsedData.role);
-  console.log('Work Experience count:', parsedData.workExperience.length);
-  console.log('Work Experience:', parsedData.workExperience);
+  // console.log('=== PARSED DATA ===');
+  // console.log('Name:', parsedData.name);
+  // console.log('Email:', parsedData.email);
+  // console.log('Company:', parsedData.company);
+  // console.log('Role:', parsedData.role);
+  // console.log('Work Experience count:', parsedData.workExperience.length);
+  // console.log('Work Experience:', parsedData.workExperience);
 
   return parsedData;
 }
@@ -278,7 +278,7 @@ function extractName(text: string): string {
   // Get first few lines
   const lines = text.split('\n').filter(line => line.trim().length > 0);
 
-  console.log('extractName - First 10 lines:', lines.slice(0, 10));
+  // console.log('extractName - First 10 lines:', lines.slice(0, 10));
 
   // Name is usually in the first 5 lines and is 2-5 words
   for (let i = 0; i < Math.min(5, lines.length); i++) {
@@ -303,13 +303,13 @@ function extractName(text: string): string {
       // Check if most words are capitalized (name pattern)
       const capitalizedWords = words.filter(w => /^[A-Z]/.test(w));
       if (capitalizedWords.length >= words.length * 0.5) {
-        console.log('extractName - Found name:', line);
+        // console.log('extractName - Found name:', line);
         return line;
       }
     }
   }
 
-  console.log('extractName - No name found');
+  // console.log('extractName - No name found');
   return '';
 }
 
@@ -519,7 +519,7 @@ function extractWorkExperience(text: string): Array<{
   const headerMatch = text.match(expHeaderRegex);
 
   if (!headerMatch) {
-    console.log('extractWorkExperience - No experience section header found');
+    // console.log('extractWorkExperience - No experience section header found');
     return experiences;
   }
 
@@ -534,13 +534,13 @@ function extractWorkExperience(text: string): Array<{
     ? remainingText.substring(0, endMatch.index!)
     : remainingText;
 
-  console.log('extractWorkExperience - Section found: true');
-  console.log('extractWorkExperience - Section text length:', sectionText.length);
-  console.log('extractWorkExperience - Section text preview:', sectionText.substring(0, 500));
-  console.log('extractWorkExperience - Section text end:', sectionText.substring(Math.max(0, sectionText.length - 500)));
+  // console.log('extractWorkExperience - Section found: true');
+  // console.log('extractWorkExperience - Section text length:', sectionText.length);
+  // console.log('extractWorkExperience - Section text preview:', sectionText.substring(0, 500));
+  // console.log('extractWorkExperience - Section text end:', sectionText.substring(Math.max(0, sectionText.length - 500)));
 
   const lines = sectionText.split('\n').filter(line => line.trim().length > 0);
-  console.log('extractWorkExperience - Total lines:', lines.length);
+  // console.log('extractWorkExperience - Total lines:', lines.length);
 
   // Check if line is a bullet point (defined first as other functions depend on it)
   const isBulletLine = (line: string): boolean => {
@@ -674,7 +674,7 @@ function extractWorkExperience(text: string): Array<{
         const company = parts[1] || '';
         const period = parts[2] || '';
 
-        console.log('extractWorkExperience - Found job with | separator:', { title, company, period });
+        // console.log('extractWorkExperience - Found job with | separator:', { title, company, period });
         i++;
 
         // Following lines are description (bullets or paragraphs)
@@ -705,7 +705,7 @@ function extractWorkExperience(text: string): Array<{
           period: period || 'Present',
           description: description.trim().substring(0, 300)
         });
-        console.log('extractWorkExperience - Added experience:', { title, company, period });
+        // console.log('extractWorkExperience - Added experience:', { title, company, period });
         continue;
       }
     }
@@ -745,7 +745,7 @@ function extractWorkExperience(text: string): Array<{
           }
           const period = potentialDateLine;
 
-          console.log('extractWorkExperience - Found 3-line format:', { title, company, location, period });
+          // console.log('extractWorkExperience - Found 3-line format:', { title, company, location, period });
           i = dateLineIdx + 1;
 
           // Collect bullet points as description
@@ -785,7 +785,7 @@ function extractWorkExperience(text: string): Array<{
             period,
             description: description.trim().substring(0, 300)
           });
-          console.log('extractWorkExperience - Added 3-line format experience:', { title, company, period });
+          // console.log('extractWorkExperience - Added 3-line format experience:', { title, company, period });
           continue;
         }
       }
@@ -795,7 +795,7 @@ function extractWorkExperience(text: string): Array<{
     if (isLikelyJobTitle(line) && line.length > 5 && line.length < 100) {
 
       const title = line;
-      console.log('extractWorkExperience - Found potential title:', title);
+      // console.log('extractWorkExperience - Found potential title:', title);
       i++;
 
       // Next line might be company name or company | date format
@@ -856,7 +856,7 @@ function extractWorkExperience(text: string): Array<{
             period: period || 'Present',
             description: description.trim().substring(0, 300)
           });
-          console.log('extractWorkExperience - Added experience:', { title, company, period });
+          // console.log('extractWorkExperience - Added experience:', { title, company, period });
         }
       }
     } else {
@@ -864,7 +864,7 @@ function extractWorkExperience(text: string): Array<{
     }
   }
 
-  console.log('extractWorkExperience - Total experiences found:', experiences.length);
+  // console.log('extractWorkExperience - Total experiences found:', experiences.length);
   return experiences.slice(0, 15); // Limit to latest 15 experiences
 }
 

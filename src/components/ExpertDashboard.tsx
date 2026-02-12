@@ -207,7 +207,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
   // Detect changes
   useEffect(() => {
     if (!originalData) {
-      console.log('originalData is null, skipping change detection');
+      // console.log('originalData is null, skipping change detection');
       return;
     }
 
@@ -234,9 +234,9 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
       availableTimeSlots: JSON.stringify(availableTimeSlots),
     };
 
-    console.log('Current data:', currentData);
-    console.log('Original data:', originalData);
-    console.log('showOnlyServices:', showOnlyServices);
+    // console.log('Current data:', currentData);
+    // console.log('Original data:', originalData);
+    // console.log('showOnlyServices:', showOnlyServices);
 
     // Compare based on current view (profile or services)
     if (showOnlyServices) {
@@ -247,7 +247,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
         currentData.availableDays !== originalData.availableDays ||
         currentData.availableTimeSlots !== originalData.availableTimeSlots;
       
-      console.log('Services change detected:', servicesChanged);
+      // console.log('Services change detected:', servicesChanged);
       setHasChanges(servicesChanged);
     } else {
       // Check profile data
@@ -270,8 +270,8 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
         currentData.achievements !== originalData.achievements ||
         avatarFile !== null;
       
-      console.log('Profile change detected:', profileChanged);
-      console.log('hasChanges will be set to:', profileChanged);
+      // console.log('Profile change detected:', profileChanged);
+      // console.log('hasChanges will be set to:', profileChanged);
       setHasChanges(profileChanged);
     }
   }, [
@@ -769,7 +769,7 @@ export function ExpertDashboard({ accessToken, expertId, onBack, hideHeaderAndNa
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
 
-      console.log('Resume parsed successfully with AI:', parsedData);
+      // console.log('Resume parsed successfully with AI:', parsedData);
     } catch (err: any) {
       console.error('Error parsing resume:', err);
       setError(err.message || 'Gagal memproses resume. Pastikan file PDF valid dan dapat dibaca.');

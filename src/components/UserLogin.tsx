@@ -29,7 +29,7 @@ export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
       // Use Supabase Auth
       if (isLogin) {
         // Login using Supabase Auth REST API
-        console.log('Attempting login for:', email);
+        // console.log('Attempting login for:', email);
         const response = await fetch(`https://${projectId}.supabase.co/auth/v1/token?grant_type=password`, {
           method: 'POST',
           headers: {
@@ -40,7 +40,7 @@ export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
         });
 
         const data = await response.json();
-        console.log('Login response:', { ok: response.ok, data });
+        // console.log('Login response:', { ok: response.ok, data });
 
         if (!response.ok) {
           setError(data.error_description || data.message || 'Login failed');
@@ -49,12 +49,12 @@ export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
         }
 
         if (data.access_token && data.user?.id) {
-          console.log('Login successful for user:', data.user.id);
+          // console.log('Login successful for user:', data.user.id);
           onLoginSuccess(data.access_token, data.user.id);
         }
       } else {
         // Signup - use Supabase Auth directly
-        console.log('Attempting signup for:', email, name);
+        // console.log('Attempting signup for:', email, name);
         
         const response = await fetch(`https://${projectId}.supabase.co/auth/v1/signup`, {
           method: 'POST',
@@ -72,7 +72,7 @@ export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
         });
 
         const result = await response.json();
-        console.log('Signup response:', { ok: response.ok, result });
+        // console.log('Signup response:', { ok: response.ok, result });
 
         if (!response.ok) {
           setError(result.error_description || result.message || 'Signup failed');
@@ -81,7 +81,7 @@ export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
         }
 
         // After signup, login automatically
-        console.log('Signup successful, attempting auto-login');
+        // console.log('Signup successful, attempting auto-login');
         const loginResponse = await fetch(`https://${projectId}.supabase.co/auth/v1/token?grant_type=password`, {
           method: 'POST',
           headers: {
@@ -92,7 +92,7 @@ export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
         });
 
         const loginData = await loginResponse.json();
-        console.log('Auto-login response:', { ok: loginResponse.ok, loginData });
+        // console.log('Auto-login response:', { ok: loginResponse.ok, loginData });
 
         if (!loginResponse.ok) {
           setError(loginData.error_description || loginData.message || 'Login after signup failed');
@@ -101,7 +101,7 @@ export function UserLogin({ onLoginSuccess, onBack }: UserLoginProps) {
         }
 
         if (loginData.access_token && loginData.user?.id) {
-          console.log('Auto-login successful for user:', loginData.user.id);
+          // console.log('Auto-login successful for user:', loginData.user.id);
           onLoginSuccess(loginData.access_token, loginData.user.id);
         }
       }

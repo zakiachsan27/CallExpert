@@ -37,7 +37,7 @@ export function ExpertDetailPage() {
       }
 
       // Debug logging to verify data from database
-      console.log('🔍 Expert Data Loaded:', {
+      // console.log('🔍 Expert Data Loaded:', {
         id: foundExpert.id,
         name: foundExpert.name,
         slug: foundExpert.slug,
