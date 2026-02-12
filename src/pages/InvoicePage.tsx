@@ -256,6 +256,41 @@ export function InvoicePage() {
     }) + ' WIB';
   };
 
+  // Generate "Add to Google Calendar" URL
+  const getAddToCalendarUrl = () => {
+    if (!booking?.booking_date || !booking?.booking_time) return '';
+    
+    const duration = booking.session_type?.duration || 60;
+    const startDate = new Date(`${booking.booking_date}T${booking.booking_time}:00+07:00`);
+    const endDate = new Date(startDate.getTime() + duration * 60 * 1000);
+    
+    // Format: YYYYMMDDTHHmmssZ
+    const formatDateForCalendar = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    };
+    
+    const title = `MentorinAja: ${booking.topic || 'Konsultasi'}`;
+    const details = `Sesi konsultasi dengan ${booking.expert?.name || 'Mentor'}
+
+Topik: ${booking.topic || '-'}
+${booking.notes ? `Catatan: ${booking.notes}` : ''}
+${booking.meeting_link ? `\nLink Google Meet: ${booking.meeting_link}` : ''}
+
+---
+MentorinAja - Platform Mentoring Indonesia
+https://mentorinaja.com`;
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: title,
+      dates: `${formatDateForCalendar(startDate)}/${formatDateForCalendar(endDate)}`,
+      details: details,
+      ctz: 'Asia/Jakarta',
+    });
+
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 relative overflow-hidden">
       {/* Background Pattern */}
@@ -428,6 +463,21 @@ export function InvoicePage() {
                     Dibayar pada: {formatDateTime(booking.paid_at || booking.updated_at)}
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Add to Calendar Button */}
+            {isPaid && (
+              <div className="flex justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs h-9 gap-2 border-brand-200 text-brand-600 hover:bg-brand-50"
+                  onClick={() => window.open(getAddToCalendarUrl(), '_blank')}
+                >
+                  <Calendar className="w-4 h-4" />
+                  Tambah ke Google Calendar
+                </Button>
               </div>
             )}
 
