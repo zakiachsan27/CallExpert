@@ -122,18 +122,22 @@ serve(async (req) => {
     // Create calendar event with Google Meet
     const eventResult = await calendarService.createEventWithMeet({
       summary: `MentorinAja: ${booking.topic || "Konsultasi"}`,
-      description: `Sesi konsultasi MentorinAja
+      description: `Halo! 👋
 
-Mentor: ${expert.name}
-Mentee: ${user.name}
+Sesi konsultasi kamu sudah terjadwal. Berikut detailnya:
 
-Topik: ${booking.topic || "-"}
-Catatan: ${booking.notes || "-"}
-
-Order ID: ${booking.order_id}
+🎯 Topik: ${booking.topic || "Konsultasi"}
+👨‍🏫 Mentor: ${expert.name}
+👤 Mentee: ${user.name}
+${booking.notes ? `
+📝 Catatan dari mentee:
+"${booking.notes}"
+` : ""}
+Klik link Google Meet di atas untuk join saat waktu sesi tiba.
+Sampai ketemu di sesi konsultasi! 🚀
 
 ---
-Powered by MentorinAja
+MentorinAja - Platform Mentoring Indonesia
 https://mentorinaja.com`,
       startDateTime: start,
       endDateTime: end,
