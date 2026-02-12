@@ -21,13 +21,21 @@ interface GoogleCredentials {
 
 // Convert PEM private key to CryptoKey
 async function importPrivateKey(pem: string): Promise<CryptoKey> {
-  // Remove PEM headers and decode base64
-  const pemContents = pem
+  // Handle escaped newlines from environment variables
+  const normalizedPem = pem.replace(/\\n/g, "\n");
+  
+  // Remove PEM headers and all whitespace
+  const pemContents = normalizedPem
     .replace("-----BEGIN PRIVATE KEY-----", "")
     .replace("-----END PRIVATE KEY-----", "")
-    .replace(/\s/g, "");
+    .replace(/[\r\n\s]/g, "");
   
-  const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+  // Decode base64 using Deno's built-in decoder
+  const binaryString = atob(pemContents);
+  const binaryKey = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    binaryKey[i] = binaryString.charCodeAt(i);
+  }
   
   return await crypto.subtle.importKey(
     "pkcs8",
