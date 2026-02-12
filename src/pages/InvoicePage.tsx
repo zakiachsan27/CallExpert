@@ -343,6 +343,46 @@ https://mentorinaja.com`;
 
           <CardContent className="p-6 sm:p-8 space-y-8">
 
+            {/* Payment Status - Moved to top */}
+            {isCheckingPayment && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
+                <Loader2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5 animate-spin" />
+                <div>
+                  <h4 className="text-sm font-bold text-blue-800">Memverifikasi Pembayaran...</h4>
+                  <p className="text-xs text-blue-700 mt-0.5">
+                    Mohon tunggu, kami sedang memverifikasi pembayaran Anda.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {isPaid && (
+              <>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-bold text-green-800">Pembayaran Berhasil</h4>
+                    <p className="text-xs text-green-700 mt-0.5">
+                      Dibayar pada: {formatDateTime(booking.paid_at || booking.updated_at)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Add to Calendar Button */}
+                <div className="flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-9 gap-2 border-brand-200 text-brand-600 hover:bg-brand-50"
+                    onClick={() => window.open(getAddToCalendarUrl(), '_blank')}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Tambah ke Google Calendar
+                  </Button>
+                </div>
+              </>
+            )}
+
             {/* 1. Expert Profile Section */}
             <div>
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Detail Sesi Konsultasi</h3>
@@ -440,46 +480,6 @@ https://mentorinaja.com`;
                 </div>
               </div>
             </div>
-
-            {/* 4. Payment Status */}
-            {isCheckingPayment && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-                <Loader2 className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5 animate-spin" />
-                <div>
-                  <h4 className="text-sm font-bold text-blue-800">Memverifikasi Pembayaran...</h4>
-                  <p className="text-xs text-blue-700 mt-0.5">
-                    Mohon tunggu, kami sedang memverifikasi pembayaran Anda.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {isPaid && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex gap-3">
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-sm font-bold text-green-800">Pembayaran Berhasil</h4>
-                  <p className="text-xs text-green-700 mt-0.5">
-                    Dibayar pada: {formatDateTime(booking.paid_at || booking.updated_at)}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Add to Calendar Button */}
-            {isPaid && (
-              <div className="flex justify-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs h-9 gap-2 border-brand-200 text-brand-600 hover:bg-brand-50"
-                  onClick={() => window.open(getAddToCalendarUrl(), '_blank')}
-                >
-                  <Calendar className="w-4 h-4" />
-                  Tambah ke Google Calendar
-                </Button>
-              </div>
-            )}
 
           </CardContent>
 
