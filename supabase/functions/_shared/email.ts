@@ -101,6 +101,12 @@ function getMenteeEmailTemplate(data: BookingDetails): string {
 
       <a href="https://mentorinaja.com/invoice/${data.orderId}" class="cta-button">Lihat Invoice</a>
 
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${getCalendarUrl(data)}" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; background: #F8FAFC; border: 2px solid #E2E8F0; color: #475569; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 500; font-size: 14px;">
+          📅 Tambah ke Google Calendar
+        </a>
+      </div>
+
       <p style="color: #64748B; font-size: 14px;">Sampai ketemu di sesi mentoring! 🚀</p>
     </div>
     <div class="footer">
@@ -215,6 +221,12 @@ function getMentorEmailTemplate(data: BookingDetails): string {
 
       <a href="https://mentorinaja.com/expert/dashboard" class="cta-button">Lihat Dashboard</a>
 
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="${getCalendarUrl(data)}" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; background: #F8FAFC; border: 2px solid #E2E8F0; color: #475569; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 500; font-size: 14px;">
+          📅 Tambah ke Google Calendar
+        </a>
+      </div>
+
       <p style="color: #64748B; font-size: 14px;">Terima kasih sudah jadi bagian dari MentorinAja! 🙏</p>
     </div>
     <div class="footer">
@@ -227,6 +239,36 @@ function getMentorEmailTemplate(data: BookingDetails): string {
   `;
 }
 
+// Generate Google Calendar URL for email CTA
+function getCalendarUrl(data: BookingDetails): string {
+  const duration = data.duration || 60;
+  const startDate = new Date(`${data.bookingDate}T${data.bookingTime}:00+07:00`);
+  const endDate = new Date(startDate.getTime() + duration * 60 * 1000);
+  
+  const formatDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  
+  const title = `MentorinAja: Sesi dengan ${data.mentorName}`;
+  const details = `Sesi mentoring MentorinAja
+
+Mentor: ${data.mentorName}
+Mentee: ${data.menteeName}
+Jenis Sesi: ${data.sessionType}
+${data.meetingLink ? `\nLink Google Meet: ${data.meetingLink}` : ''}
+
+---
+MentorinAja - Platform Mentoring Indonesia`;
+
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: `${formatDate(startDate)}/${formatDate(endDate)}`,
+    details: details,
+    ctz: 'Asia/Jakarta',
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 // Kirim email ke Mentee
 export async function sendMenteeReceipt(data: BookingDetails): Promise<void> {
   try {
@@ -234,7 +276,7 @@ export async function sendMenteeReceipt(data: BookingDetails): Promise<void> {
       from: FROM_EMAIL,
       to: data.menteeEmail,
       reply_to: REPLY_TO_EMAIL,
-      subject: `Pembayaran Berhasil - Booking #${data.orderId}`,
+      subject: `[MentorinAja] Booking Berhasil - Sesi dengan ${data.mentorName}`,
       html: getMenteeEmailTemplate(data),
     });
 
@@ -252,7 +294,7 @@ export async function sendMentorNotification(data: BookingDetails): Promise<void
       from: FROM_EMAIL,
       to: data.mentorEmail,
       reply_to: REPLY_TO_EMAIL,
-      subject: `Booking Baru - ${data.menteeName}`,
+      subject: `[MentorinAja] Booking Baru dari ${data.menteeName}`,
       html: getMentorEmailTemplate(data),
     });
 
