@@ -21,7 +21,7 @@ export interface BookingDetails {
   meetingLink?: string;
 }
 
-// Email template untuk Mentee (Receipt)
+// Email template untuk Mentee (Receipt) - Friendly version
 function getMenteeEmailTemplate(data: BookingDetails): string {
   return `
 <!DOCTYPE html>
@@ -29,80 +29,83 @@ function getMenteeEmailTemplate(data: BookingDetails): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pembayaran Berhasil - MentorinAja</title>
+  <title>Booking Terkonfirmasi - MentorinAja</title>
   <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: #4F46E5; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-    .detail-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-    .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-    .detail-row:last-child { border-bottom: none; }
-    .meeting-link { background: #EEF2FF; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; }
-    .meeting-link a { color: #4F46E5; font-weight: bold; text-decoration: none; }
-    .button { display: inline-block; background: #4F46E5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 30px; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.7; color: #333; background: #f5f5f5; margin: 0; padding: 20px; }
+    .container { max-width: 560px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .header { background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: white; padding: 32px; text-align: center; }
+    .header h1 { margin: 0 0 8px 0; font-size: 24px; }
+    .header p { margin: 0; opacity: 0.9; font-size: 14px; }
+    .content { padding: 32px; }
+    .greeting { font-size: 18px; margin-bottom: 16px; }
+    .detail-card { background: #F8FAFC; padding: 24px; border-radius: 12px; margin: 24px 0; }
+    .detail-card h3 { margin: 0 0 16px 0; color: #4F46E5; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .detail-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #E2E8F0; }
+    .detail-item:last-child { border-bottom: none; }
+    .detail-label { color: #64748B; }
+    .detail-value { font-weight: 600; color: #1E293B; }
+    .meeting-box { background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%); padding: 24px; border-radius: 12px; margin: 24px 0; text-align: center; border: 2px solid #C7D2FE; }
+    .meeting-box h3 { margin: 0 0 12px 0; color: #4F46E5; }
+    .meeting-box a { color: #4F46E5; font-weight: bold; text-decoration: none; font-size: 14px; word-break: break-all; }
+    .meeting-box p { margin: 12px 0 0 0; font-size: 12px; color: #6366F1; }
+    .cta-button { display: block; background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; text-align: center; font-weight: 600; margin: 24px 0; }
+    .footer { text-align: center; padding: 24px; color: #94A3B8; font-size: 12px; border-top: 1px solid #E2E8F0; }
+    .emoji { font-size: 20px; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>Pembayaran Berhasil!</h1>
-      <p>Booking Anda telah dikonfirmasi</p>
+      <h1>Yeay, Booking Berhasil! 🎉</h1>
+      <p>Sesi mentoring kamu sudah terkonfirmasi</p>
     </div>
     <div class="content">
-      <p>Halo <strong>${data.menteeName}</strong>,</p>
-      <p>Terima kasih atas pembayaran Anda. Booking sesi mentoring telah berhasil dikonfirmasi.</p>
+      <p class="greeting">Halo <strong>${data.menteeName}</strong>! 👋</p>
+      <p>Terima kasih sudah booking sesi mentoring di MentorinAja. Berikut detail sesi kamu:</p>
       
-      <div class="detail-box">
-        <h3>Detail Booking</h3>
-        <div class="detail-row">
-          <span>Order ID:</span>
-          <strong>${data.orderId}</strong>
+      <div class="detail-card">
+        <h3>📋 Detail Sesi</h3>
+        <div class="detail-item">
+          <span class="detail-label">Mentor</span>
+          <span class="detail-value">${data.mentorName}</span>
         </div>
-        <div class="detail-row">
-          <span>Expert:</span>
-          <strong>${data.mentorName}</strong>
+        <div class="detail-item">
+          <span class="detail-label">Jenis Sesi</span>
+          <span class="detail-value">${data.sessionType}</span>
         </div>
-        <div class="detail-row">
-          <span>Jenis Sesi:</span>
-          <strong>${data.sessionType}</strong>
+        <div class="detail-item">
+          <span class="detail-label">Durasi</span>
+          <span class="detail-value">${data.duration} menit</span>
         </div>
-        <div class="detail-row">
-          <span>Durasi:</span>
-          <strong>${data.duration} menit</strong>
+        <div class="detail-item">
+          <span class="detail-label">Tanggal</span>
+          <span class="detail-value">${data.bookingDate}</span>
         </div>
-        <div class="detail-row">
-          <span>Tanggal:</span>
-          <strong>${data.bookingDate}</strong>
+        <div class="detail-item">
+          <span class="detail-label">Waktu</span>
+          <span class="detail-value">${data.bookingTime} WIB</span>
         </div>
-        <div class="detail-row">
-          <span>Waktu:</span>
-          <strong>${data.bookingTime}</strong>
-        </div>
-        <div class="detail-row">
-          <span>Total Bayar:</span>
-          <strong>Rp ${data.amount.toLocaleString('id-ID')}</strong>
+        <div class="detail-item">
+          <span class="detail-label">Total Bayar</span>
+          <span class="detail-value" style="color: #059669;">Rp ${data.amount.toLocaleString('id-ID')}</span>
         </div>
       </div>
 
       ${data.meetingLink ? `
-      <div class="meeting-link">
-        <h3>Link Meeting</h3>
-        <p><a href="${data.meetingLink}" target="_blank">${data.meetingLink}</a></p>
-        <p style="font-size: 12px; color: #666;">Klik link di atas untuk bergabung ke sesi mentoring</p>
+      <div class="meeting-box">
+        <h3>🔗 Link Google Meet</h3>
+        <a href="${data.meetingLink}" target="_blank">${data.meetingLink}</a>
+        <p>Klik link di atas saat waktu sesi tiba</p>
       </div>
       ` : ''}
 
-      <div style="text-align: center;">
-        <a href="https://mentorinaja.id/booking/${data.bookingId}" class="button">Lihat Detail Booking</a>
-      </div>
+      <a href="https://mentorinaja.com/invoice/${data.orderId}" class="cta-button">Lihat Invoice</a>
 
-      <p>Jika ada pertanyaan, silakan hubungi kami melalui email atau WhatsApp.</p>
+      <p style="color: #64748B; font-size: 14px;">Sampai ketemu di sesi mentoring! 🚀</p>
     </div>
     <div class="footer">
-      <p>&copy; 2026 MentorinAja. All rights reserved.</p>
-      <p>Email ini dikirim secara otomatis, mohon tidak membalas email ini.</p>
+      <p><strong>MentorinAja</strong> - Platform Mentoring Indonesia</p>
+      <p>Order ID: ${data.orderId}</p>
     </div>
   </div>
 </body>
@@ -110,7 +113,7 @@ function getMenteeEmailTemplate(data: BookingDetails): string {
   `;
 }
 
-// Email template untuk Mentor (Notifikasi)
+// Email template untuk Mentor (Notifikasi) - Friendly version
 function getMentorEmailTemplate(data: BookingDetails): string {
   const platformFee = data.amount * 0.2; // 20% platform fee
   const mentorEarnings = data.amount - platformFee;
@@ -123,95 +126,100 @@ function getMentorEmailTemplate(data: BookingDetails): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Booking Baru - MentorinAja</title>
   <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: #10B981; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-    .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-    .detail-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-    .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-    .detail-row:last-child { border-bottom: none; }
-    .earnings-box { background: #ECFDF5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10B981; }
-    .meeting-link { background: #EEF2FF; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: center; }
-    .meeting-link a { color: #4F46E5; font-weight: bold; text-decoration: none; }
-    .button { display: inline-block; background: #4F46E5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 30px; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.7; color: #333; background: #f5f5f5; margin: 0; padding: 20px; }
+    .container { max-width: 560px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .header { background: linear-gradient(135deg, #059669 0%, #10B981 100%); color: white; padding: 32px; text-align: center; }
+    .header h1 { margin: 0 0 8px 0; font-size: 24px; }
+    .header p { margin: 0; opacity: 0.9; font-size: 14px; }
+    .content { padding: 32px; }
+    .greeting { font-size: 18px; margin-bottom: 16px; }
+    .detail-card { background: #F8FAFC; padding: 24px; border-radius: 12px; margin: 24px 0; }
+    .detail-card h3 { margin: 0 0 16px 0; color: #059669; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .detail-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #E2E8F0; }
+    .detail-item:last-child { border-bottom: none; }
+    .detail-label { color: #64748B; }
+    .detail-value { font-weight: 600; color: #1E293B; }
+    .earnings-card { background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%); padding: 24px; border-radius: 12px; margin: 24px 0; border: 2px solid #A7F3D0; }
+    .earnings-card h3 { margin: 0 0 16px 0; color: #059669; }
+    .earnings-total { font-size: 28px; color: #059669; font-weight: bold; margin-top: 12px; }
+    .meeting-box { background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%); padding: 24px; border-radius: 12px; margin: 24px 0; text-align: center; border: 2px solid #C7D2FE; }
+    .meeting-box h3 { margin: 0 0 12px 0; color: #4F46E5; }
+    .meeting-box a { color: #4F46E5; font-weight: bold; text-decoration: none; font-size: 14px; word-break: break-all; }
+    .cta-button { display: block; background: linear-gradient(135deg, #059669 0%, #10B981 100%); color: white; padding: 16px 32px; text-decoration: none; border-radius: 12px; text-align: center; font-weight: 600; margin: 24px 0; }
+    .footer { text-align: center; padding: 24px; color: #94A3B8; font-size: 12px; border-top: 1px solid #E2E8F0; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>Booking Baru Masuk!</h1>
-      <p>Ada sesi mentoring baru yang menunggu Anda</p>
+      <h1>Ada Booking Baru! 🎉</h1>
+      <p>Seseorang ingin belajar dari kamu</p>
     </div>
     <div class="content">
-      <p>Halo <strong>${data.mentorName}</strong>,</p>
-      <p>Selamat! Ada booking baru dari mentee. Berikut detailnya:</p>
+      <p class="greeting">Halo <strong>${data.mentorName}</strong>! 👋</p>
+      <p>Kabar baik! Ada mentee yang baru saja booking sesi dengan kamu. Berikut detailnya:</p>
       
-      <div class="detail-box">
-        <h3>Info Mentee</h3>
-        <div class="detail-row">
-          <span>Nama:</span>
-          <strong>${data.menteeName}</strong>
+      <div class="detail-card">
+        <h3>👤 Info Mentee</h3>
+        <div class="detail-item">
+          <span class="detail-label">Nama</span>
+          <span class="detail-value">${data.menteeName}</span>
         </div>
-        <div class="detail-row">
-          <span>Email:</span>
-          <strong>${data.menteeEmail}</strong>
-        </div>
-      </div>
-
-      <div class="detail-box">
-        <h3>Detail Sesi</h3>
-        <div class="detail-row">
-          <span>Jenis Sesi:</span>
-          <strong>${data.sessionType}</strong>
-        </div>
-        <div class="detail-row">
-          <span>Durasi:</span>
-          <strong>${data.duration} menit</strong>
-        </div>
-        <div class="detail-row">
-          <span>Tanggal:</span>
-          <strong>${data.bookingDate}</strong>
-        </div>
-        <div class="detail-row">
-          <span>Waktu:</span>
-          <strong>${data.bookingTime}</strong>
+        <div class="detail-item">
+          <span class="detail-label">Email</span>
+          <span class="detail-value">${data.menteeEmail}</span>
         </div>
       </div>
 
-      <div class="earnings-box">
-        <h3>Pendapatan Anda</h3>
-        <div class="detail-row">
-          <span>Total Booking:</span>
-          <span>Rp ${data.amount.toLocaleString('id-ID')}</span>
+      <div class="detail-card">
+        <h3>📋 Detail Sesi</h3>
+        <div class="detail-item">
+          <span class="detail-label">Jenis Sesi</span>
+          <span class="detail-value">${data.sessionType}</span>
         </div>
-        <div class="detail-row">
-          <span>Biaya Platform (20%):</span>
-          <span>- Rp ${platformFee.toLocaleString('id-ID')}</span>
+        <div class="detail-item">
+          <span class="detail-label">Durasi</span>
+          <span class="detail-value">${data.duration} menit</span>
         </div>
-        <div class="detail-row" style="font-size: 18px; color: #10B981;">
-          <span><strong>Total Diterima:</strong></span>
-          <strong>Rp ${mentorEarnings.toLocaleString('id-ID')}</strong>
+        <div class="detail-item">
+          <span class="detail-label">Tanggal</span>
+          <span class="detail-value">${data.bookingDate}</span>
         </div>
+        <div class="detail-item">
+          <span class="detail-label">Waktu</span>
+          <span class="detail-value">${data.bookingTime} WIB</span>
+        </div>
+      </div>
+
+      <div class="earnings-card">
+        <h3>💰 Pendapatan Kamu</h3>
+        <div class="detail-item">
+          <span class="detail-label">Total Booking</span>
+          <span class="detail-value">Rp ${data.amount.toLocaleString('id-ID')}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Biaya Platform (20%)</span>
+          <span class="detail-value">- Rp ${platformFee.toLocaleString('id-ID')}</span>
+        </div>
+        <div class="earnings-total">Rp ${mentorEarnings.toLocaleString('id-ID')}</div>
+        <p style="margin: 8px 0 0 0; font-size: 12px; color: #059669;">Yang akan kamu terima</p>
       </div>
 
       ${data.meetingLink ? `
-      <div class="meeting-link">
-        <h3>Link Meeting</h3>
-        <p><a href="${data.meetingLink}" target="_blank">${data.meetingLink}</a></p>
-        <p style="font-size: 12px; color: #666;">Gunakan link ini saat sesi dimulai</p>
+      <div class="meeting-box">
+        <h3>🔗 Link Google Meet</h3>
+        <a href="${data.meetingLink}" target="_blank">${data.meetingLink}</a>
+        <p style="margin: 12px 0 0 0; font-size: 12px; color: #6366F1;">Gunakan link ini saat sesi dimulai</p>
       </div>
       ` : ''}
 
-      <div style="text-align: center;">
-        <a href="https://mentorinaja.id/expert/dashboard" class="button">Lihat Jadwal</a>
-      </div>
+      <a href="https://mentorinaja.com/expert/dashboard" class="cta-button">Lihat Dashboard</a>
 
-      <p>Terima kasih telah menjadi bagian dari MentorinAja!</p>
+      <p style="color: #64748B; font-size: 14px;">Terima kasih sudah jadi bagian dari MentorinAja! 🙏</p>
     </div>
     <div class="footer">
-      <p>&copy; 2026 MentorinAja. All rights reserved.</p>
-      <p>Email ini dikirim secara otomatis, mohon tidak membalas email ini.</p>
+      <p><strong>MentorinAja</strong> - Platform Mentoring Indonesia</p>
+      <p>Order ID: ${data.orderId}</p>
     </div>
   </div>
 </body>
