@@ -498,7 +498,8 @@ export function HomePage() {
               {experts.map((expert) => (
                 <div
                   key={expert.id}
-                  className="min-w-[260px] md:min-w-[280px] bg-white p-4 rounded-2xl border border-gray-200 text-left hover:shadow-lg hover:-translate-y-1 transition flex flex-col snap-center flex-shrink-0"
+                  onClick={() => handleExpertClick(expert.slug || expert.id)}
+                  className="min-w-[260px] md:min-w-[280px] bg-white p-4 rounded-2xl border border-gray-200 text-left hover:shadow-lg hover:-translate-y-1 transition flex flex-col snap-center flex-shrink-0 cursor-pointer"
                 >
                   <div className="flex justify-between items-start mb-3">
                     <img
@@ -543,8 +544,11 @@ export function HomePage() {
                       </span>
                     </div>
                     <button
-                      onClick={() => handleExpertClick(expert.slug || expert.id)}
-                      className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md shadow-brand-200 hover:bg-brand-700 transition"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleExpertClick(expert.slug || expert.id);
+                      }}
+                      className="bg-brand-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md shadow-brand-200 hover:bg-brand-700 transition relative z-10 touch-manipulation"
                     >
                       Book Now
                     </button>

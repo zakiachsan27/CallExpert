@@ -35,6 +35,11 @@ body {
   scrollbar-width: none;
 }
 
+/* Touch manipulation for better mobile button responsiveness */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
 /* Background Grid Pattern */
 .bg-grid-pattern {
   background-image: linear-gradient(to right, #f1f5f9 1px, transparent 1px),
