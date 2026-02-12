@@ -12,7 +12,8 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  FileText
 } from 'lucide-react';
 import type { Booking } from '../App';
 import { getBookingsByUser } from '../services/database';
@@ -198,7 +199,7 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
               <Card
                 key={booking.id}
                 className="bg-white border-gray-200 hover:border-brand-200 hover:shadow-md transition-all duration-200 overflow-hidden group cursor-pointer"
-                onClick={() => navigate(`/invoice/${booking.id}`)}
+                onClick={() => navigate(`/invoice/${booking.order_id || booking.id}`)}
               >
                 <CardContent className="p-6">
                   <div className="flex flex-col sm:flex-row gap-6">
@@ -251,16 +252,30 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
 
                 {/* Action Footer */}
                 <CardFooter className="bg-gray-50/50 px-6 py-3 flex justify-end gap-3 border-t border-gray-100">
+                  {/* Lihat Invoice - Always visible */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-gray-500 hover:text-brand-600 text-xs h-8"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/invoice/${booking.order_id || booking.id}`);
+                    }}
+                  >
+                    <FileText className="w-3.5 h-3.5 mr-1.5" />
+                    Lihat Invoice
+                  </Button>
+
                   {(booking.status === 'confirmed' || booking.status === 'pending') && (
                     <>
-                      {booking.meetingLink && booking.status === 'confirmed' && (
+                      {booking.meeting_link && booking.status === 'confirmed' && (
                         <Button
                           variant="ghost"
                           size="sm"
                           className="text-gray-500 hover:text-brand-600 text-xs h-8"
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.open(booking.meetingLink, '_blank');
+                            window.open(booking.meeting_link, '_blank');
                           }}
                         >
                           Join Meeting
@@ -271,8 +286,8 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
                         className="bg-brand-600 hover:bg-brand-700 text-white text-xs h-8 rounded-lg shadow-sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const expertName = booking.expert?.name || 'expert';
-                          navigate(`/expert/${createSlug(expertName)}`);
+                          const expertSlug = booking.expert?.slug || createSlug(booking.expert?.name || 'expert');
+                          navigate(`/expert/${expertSlug}`);
                         }}
                       >
                         Book Lagi

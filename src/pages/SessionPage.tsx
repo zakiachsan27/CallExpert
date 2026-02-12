@@ -232,7 +232,7 @@ export function SessionPage() {
                 if (expertId) {
                   navigate('/expert/dashboard');
                 } else {
-                  navigate('/transactions');
+                  navigate('/user/transactions');
                 }
               }}
               className="text-gray-500 hover:text-brand-600 transition flex items-center gap-1 text-sm font-medium"

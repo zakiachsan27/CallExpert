@@ -45,8 +45,10 @@ export default function PaymentSuccessPage() {
         setPaymentDetails(data);
 
         // Redirect to invoice page after 3 seconds
+        // Use order_id if available, fallback to bookingId
+        const invoiceId = data.order_id || bookingId;
         setTimeout(() => {
-          navigate(`/invoice/${bookingId}`);
+          navigate(`/invoice/${invoiceId}`);
         }, 3000);
       } else {
         setStatus('failed');
@@ -96,7 +98,7 @@ export default function PaymentSuccessPage() {
               </p>
 
               <Button
-                onClick={() => navigate(`/invoice/${bookingId}`)}
+                onClick={() => navigate(`/invoice/${paymentDetails?.order_id || bookingId}`)}
                 className="w-full bg-brand-600 text-white font-bold rounded-xl shadow-lg shadow-brand-200 hover:bg-brand-700 transition"
               >
                 Lihat Invoice Sekarang

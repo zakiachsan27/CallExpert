@@ -32,6 +32,7 @@ export function InvoicePage() {
   const [error, setError] = useState('');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+  const [hasTriggeredAutoPayment, setHasTriggeredAutoPayment] = useState(false);
 
   useEffect(() => {
     if (orderId) {
@@ -39,16 +40,17 @@ export function InvoicePage() {
     }
   }, [orderId]);
 
-  // Auto-trigger payment popup for pending bookings
+  // Auto-trigger payment popup for pending bookings (only once)
   useEffect(() => {
-    if (booking && booking.payment_status === 'waiting' && isSnapLoaded && !isProcessingPayment) {
+    if (booking && booking.payment_status === 'waiting' && isSnapLoaded && !isProcessingPayment && !hasTriggeredAutoPayment) {
       console.log('Auto-triggering payment for new booking');
+      setHasTriggeredAutoPayment(true);
       const timer = setTimeout(() => {
         handlePayNow();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [booking, isSnapLoaded]);
+  }, [booking, isSnapLoaded, hasTriggeredAutoPayment]);
 
   const fetchBooking = async () => {
     setIsLoading(true);
