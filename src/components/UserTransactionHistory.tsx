@@ -61,15 +61,15 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
       const data = await getBookingsByUser(userId);
       // console.log('Bookings data:', data);
       // Log first booking to debug price field
-      if (data.length > 0) {
-        // console.log('First booking sample:', data[0]);
-        // console.log('Price fields:', {
-          totalPrice: data[0].totalPrice,
-          total_price: data[0].total_price,
-          price: data[0].price,
-          session_type_price: data[0].session_type?.price
-        });
-      }
+      // if (data.length > 0) {
+      //   console.log('First booking sample:', data[0]);
+      //   console.log('Price fields:', {
+      //     totalPrice: data[0].totalPrice,
+      //     total_price: data[0].total_price,
+      //     price: data[0].price,
+      //     session_type_price: data[0].session_type?.price
+      //   });
+      // }
       setBookings(data);
     } catch (err) {
       console.error('Error fetching bookings:', err);

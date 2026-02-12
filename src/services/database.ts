@@ -295,15 +295,15 @@ export async function getExpertBySlug(slug: string): Promise<Expert | null> {
 
     // Debug logging to verify database queries
     // console.log('📊 Database Query Results for expert:', expert.name, {
-      expertId: expert.id,
-      slug: expert.slug,
-      sessionTypesFromDB: sessionTypes.data?.length || 0,
-      sessionTypesData: sessionTypes.data,
-      digitalProductsFromDB: digitalProducts.data?.length || 0,
-      digitalProductsData: digitalProducts.data,
-      sessionTypesError: sessionTypes.error,
-      digitalProductsError: digitalProducts.error
-    });
+    //   expertId: expert.id,
+    //   slug: expert.slug,
+    //   sessionTypesFromDB: sessionTypes.data?.length || 0,
+    //   sessionTypesData: sessionTypes.data,
+    //   digitalProductsFromDB: digitalProducts.data?.length || 0,
+    //   digitalProductsData: digitalProducts.data,
+    //   sessionTypesError: sessionTypes.error,
+    //   digitalProductsError: digitalProducts.error
+    // });
 
     const expertWithRelations: ExpertWithRelations = {
       ...expert,

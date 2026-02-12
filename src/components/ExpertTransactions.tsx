@@ -165,17 +165,17 @@ export function ExpertTransactions({ accessToken }: ExpertTransactionsProps) {
       // console.log('📊 Transactions count:', transactionsData.transactions?.length || 0);
 
       // Log each transaction with payment status
-      transactionsData.transactions?.forEach((t: any, i: number) => {
-        // console.log(`Transaction ${i + 1}:`, {
-          id: t.id,
-          orderId: t.orderId,
-          userName: t.userName,
-          date: t.date,
-          paymentStatus: t.paymentStatus,
-          status: t.status,
-          createdAt: t.createdAt
-        });
-      });
+      // transactionsData.transactions?.forEach((t: any, i: number) => {
+      //   console.log(`Transaction ${i + 1}:`, {
+      //     id: t.id,
+      //     orderId: t.orderId,
+      //     userName: t.userName,
+      //     date: t.date,
+      //     paymentStatus: t.paymentStatus,
+      //     status: t.status,
+      //     createdAt: t.createdAt
+      //   });
+      // });
 
       // Fetch withdraw requests
       let withdrawData: Transaction[] = [];

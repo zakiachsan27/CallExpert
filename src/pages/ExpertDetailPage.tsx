@@ -38,14 +38,14 @@ export function ExpertDetailPage() {
 
       // Debug logging to verify data from database
       // console.log('🔍 Expert Data Loaded:', {
-        id: foundExpert.id,
-        name: foundExpert.name,
-        slug: foundExpert.slug,
-        sessionTypesCount: foundExpert.sessionTypes?.length || 0,
-        digitalProductsCount: foundExpert.digitalProducts?.length || 0,
-        sessionTypes: foundExpert.sessionTypes,
-        digitalProducts: foundExpert.digitalProducts
-      });
+      //   id: foundExpert.id,
+      //   name: foundExpert.name,
+      //   slug: foundExpert.slug,
+      //   sessionTypesCount: foundExpert.sessionTypes?.length || 0,
+      //   digitalProductsCount: foundExpert.digitalProducts?.length || 0,
+      //   sessionTypes: foundExpert.sessionTypes,
+      //   digitalProducts: foundExpert.digitalProducts
+      // });
 
       setExpert(foundExpert);
     } catch (err) {
