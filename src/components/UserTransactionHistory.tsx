@@ -286,8 +286,11 @@ export function UserTransactionHistory({ onBack }: UserTransactionHistoryProps) 
                         className="bg-brand-600 hover:bg-brand-700 text-white text-xs h-8 rounded-lg shadow-sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const expertSlug = booking.expert?.slug || createSlug(booking.expert?.name || 'expert');
-                          navigate(`/expert/${expertSlug}`);
+                          // Use slug if available, otherwise use expert ID
+                          const expertIdentifier = booking.expert?.slug || booking.expert?.id;
+                          if (expertIdentifier) {
+                            navigate(`/expert/${expertIdentifier}`);
+                          }
                         }}
                       >
                         Book Lagi

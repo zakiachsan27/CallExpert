@@ -270,16 +270,30 @@ export async function getExpertById(expertId: string): Promise<Expert | null> {
 }
 
 // Get expert by slug
-export async function getExpertBySlug(slug: string): Promise<Expert | null> {
+export async function getExpertBySlug(slugOrId: string): Promise<Expert | null> {
   try {
-    const { data: expert, error } = await supabase
+    // Try to find by slug first
+    let { data: expert, error } = await supabase
       .from('experts')
       .select('*')
-      .eq('slug', slug)
+      .eq('slug', slugOrId)
       .or('is_active.eq.true,is_active.is.null')
       .single();
 
-    if (error) throw error;
+    // If not found by slug, try by ID (UUID format)
+    if (error || !expert) {
+      const { data: expertById, error: idError } = await supabase
+        .from('experts')
+        .select('*')
+        .eq('id', slugOrId)
+        .or('is_active.eq.true,is_active.is.null')
+        .single();
+      
+      if (!idError && expertById) {
+        expert = expertById;
+      }
+    }
+
     if (!expert) return null;
 
     // Fetch related data
