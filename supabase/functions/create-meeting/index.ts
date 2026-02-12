@@ -38,7 +38,7 @@ serve(async (req) => {
       project_id: Deno.env.get("GOOGLE_PROJECT_ID")!,
     };
 
-    // Fetch booking with expert and user data
+    // Fetch booking with session type data
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .select(`
@@ -48,11 +48,17 @@ serve(async (req) => {
         booking_time,
         topic,
         notes,
-        session_type,
+        session_type_id,
         expert_id,
         user_id,
         meeting_link,
-        calendar_event_id
+        calendar_event_id,
+        session_types:session_type_id (
+          id,
+          name,
+          duration,
+          category
+        )
       `)
       .eq("id", booking_id)
       .single();
@@ -106,8 +112,9 @@ serve(async (req) => {
       );
     }
 
-    // Get session duration
-    const duration = booking.session_type?.duration || 60;
+    // Get session duration from joined session_types
+    const sessionType = booking.session_types;
+    const duration = sessionType?.duration || 60;
 
     // Create date/time for calendar event
     const { start, end } = createDateTimeISO(
