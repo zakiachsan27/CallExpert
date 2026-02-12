@@ -142,7 +142,11 @@ export function InvoicePage() {
         },
         onPending: async (result) => {
           console.log('Payment pending:', result);
-          navigate(`/payment/success?booking_id=${booking.id}`);
+          // Don't redirect to success - payment is not complete yet
+          // Refresh booking data to show updated payment instructions
+          setIsProcessingPayment(false);
+          await fetchBooking();
+          alert('Silakan selesaikan pembayaran sesuai instruksi yang diberikan.');
         },
         onError: (result) => {
           console.error('Payment error:', result);
@@ -150,7 +154,10 @@ export function InvoicePage() {
           setIsProcessingPayment(false);
         },
         onClose: () => {
+          console.log('Payment popup closed');
           setIsProcessingPayment(false);
+          // Refresh to check if any payment method was selected
+          fetchBooking();
         }
       });
     } catch (error) {
@@ -222,6 +229,32 @@ export function InvoicePage() {
 
   const isPaid = booking.payment_status === 'paid';
   const isPending = booking.payment_status === 'waiting';
+
+  // Check if session is within 30 minutes from now
+  const getSessionStartTime = () => {
+    if (!booking?.booking_date || !booking?.booking_time) return null;
+    const sessionStart = new Date(`${booking.booking_date}T${booking.booking_time}:00+07:00`);
+    return sessionStart;
+  };
+
+  const sessionStartTime = getSessionStartTime();
+  const now = new Date();
+  const thirtyMinutesBefore = sessionStartTime ? new Date(sessionStartTime.getTime() - 30 * 60 * 1000) : null;
+  const canAccessChatRoom = thirtyMinutesBefore ? now >= thirtyMinutesBefore : false;
+  
+  // Format session time for display
+  const formatSessionTime = () => {
+    if (!sessionStartTime) return '';
+    return sessionStartTime.toLocaleString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Jakarta'
+    }) + ' WIB';
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 relative overflow-hidden">
@@ -405,25 +438,71 @@ export function InvoicePage() {
             {/* Chat/Meeting Access for Paid Bookings */}
             {isPaid && booking.session_type?.category === 'online-chat' && (
               <div className="w-full">
-                <p className="text-xs text-gray-500 mb-2 font-medium">Akses Chat Konsultasi:</p>
-                <Button
-                  onClick={() => navigate(`/session?bookingId=${booking.id}`)}
-                  className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold h-12 rounded-xl shadow-lg shadow-brand-200 transition transform hover:-translate-y-0.5"
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" /> Masuk ke Chat Room
-                </Button>
+                {canAccessChatRoom ? (
+                  <>
+                    <p className="text-xs text-gray-500 mb-2 font-medium">Akses Chat Konsultasi:</p>
+                    <Button
+                      onClick={() => navigate(`/session?bookingId=${booking.id}`)}
+                      className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold h-12 rounded-xl shadow-lg shadow-brand-200 transition transform hover:-translate-y-0.5"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-2" /> Masuk ke Chat Room
+                    </Button>
+                  </>
+                ) : (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="flex gap-3">
+                      <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-bold text-blue-800">Menunggu Waktu Sesi</h4>
+                        <p className="text-xs text-blue-700 mt-1">
+                          Tombol "Masuk ke Chat Room" akan muncul <strong>30 menit sebelum</strong> sesi dimulai.
+                        </p>
+                        <p className="text-xs text-blue-600 mt-2">
+                          Jadwal sesi: <strong>{formatSessionTime()}</strong>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            {isPaid && booking.session_type?.category === 'online-video' && booking.meeting_link && (
+            {isPaid && booking.session_type?.category === 'online-video' && (
               <div className="w-full">
-                <p className="text-xs text-gray-500 mb-2 font-medium">Link Video Call:</p>
-                <Button
-                  onClick={() => window.open(booking.meeting_link, '_blank')}
-                  className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold h-12 rounded-xl shadow-lg shadow-brand-200 transition transform hover:-translate-y-0.5"
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" /> Buka Google Meet
-                </Button>
+                {canAccessChatRoom ? (
+                  booking.meeting_link ? (
+                    <>
+                      <p className="text-xs text-gray-500 mb-2 font-medium">Link Video Call:</p>
+                      <Button
+                        onClick={() => window.open(booking.meeting_link, '_blank')}
+                        className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold h-12 rounded-xl shadow-lg shadow-brand-200 transition transform hover:-translate-y-0.5"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" /> Buka Google Meet
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                      <p className="text-sm text-yellow-800">
+                        Link Google Meet sedang disiapkan. Silakan refresh halaman ini.
+                      </p>
+                    </div>
+                  )
+                ) : (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="flex gap-3">
+                      <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-bold text-blue-800">Menunggu Waktu Sesi</h4>
+                        <p className="text-xs text-blue-700 mt-1">
+                          Tombol "Buka Google Meet" akan muncul <strong>30 menit sebelum</strong> sesi dimulai.
+                        </p>
+                        <p className="text-xs text-blue-600 mt-2">
+                          Jadwal sesi: <strong>{formatSessionTime()}</strong>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
