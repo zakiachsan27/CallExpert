@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
-import { Search, Star, MapPin, Briefcase, Check, MessageCircle, CalendarCheck, ChevronLeft, ChevronRight, ArrowRight, Clock, Calendar } from 'lucide-react';
+import { Search, Star, MapPin, Briefcase, Check, MessageCircle, CalendarCheck, ChevronLeft, ChevronRight, ChevronDown, ArrowRight, Clock, Calendar, HelpCircle } from 'lucide-react';
 import { getFeaturedExperts } from '../services/database';
 import { getArticles } from '../services/articleService';
 import type { Expert } from '../App';
@@ -80,8 +80,56 @@ export function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
+  const [whyIndex, setWhyIndex] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const testimonialsPerPage = 4;
   const maxIndex = Math.ceil(testimonials.length / testimonialsPerPage) - 1;
+
+  // Why MentorinAja data
+  const whyReasons = [
+    {
+      icon: Check,
+      iconBg: "bg-brand-50 border-brand-100 text-brand-600",
+      title: "Expert Terverifikasi",
+      desc: "Semua expert melalui seleksi ketat untuk memastikan bimbingan berkualitas tinggi."
+    },
+    {
+      icon: MessageCircle,
+      iconBg: "bg-blue-50 border-blue-100 text-blue-600",
+      title: "Metode Interaksi Beragam",
+      desc: "Konsultasi fleksibel via real-time chat, video call, hingga undang expert ke event kantor."
+    },
+    {
+      icon: CalendarCheck,
+      iconBg: "bg-green-50 border-green-100 text-green-600",
+      title: "Jadwal Fleksibel",
+      desc: "Sinkronisasi kalender otomatis. Atur waktu sesi sesuai kenyamananmu tanpa ribet."
+    }
+  ];
+
+  // FAQ data
+  const faqs = [
+    {
+      question: "Apa itu MentorinAja?",
+      answer: "MentorinAja adalah platform mentoring online yang menghubungkan kamu dengan para profesional berpengalaman di berbagai bidang. Kamu bisa berkonsultasi tentang karir, skill development, atau masalah pekerjaan lainnya melalui video call atau chat."
+    },
+    {
+      question: "Bagaimana cara booking sesi mentoring?",
+      answer: "Caranya mudah! Pilih mentor yang sesuai kebutuhanmu, pilih jenis sesi dan jadwal yang tersedia, lakukan pembayaran, dan kamu akan langsung mendapat link meeting via email. Semua proses bisa selesai dalam hitungan menit."
+    },
+    {
+      question: "Berapa biaya sesi mentoring?",
+      answer: "Biaya bervariasi tergantung mentor dan jenis sesi yang dipilih. Mulai dari Rp 50.000 untuk sesi chat hingga Rp 500.000+ untuk sesi video call intensif. Setiap mentor menentukan harga berdasarkan pengalaman dan durasi sesi."
+    },
+    {
+      question: "Apakah bisa refund jika mentor tidak hadir?",
+      answer: "Ya, tentu! Jika mentor tidak hadir atau membatalkan sesi tanpa pemberitahuan, kamu berhak mendapat refund penuh. Hubungi tim support kami untuk proses refund yang cepat dan mudah."
+    },
+    {
+      question: "Bagaimana cara menjadi mentor di MentorinAja?",
+      answer: "Untuk menjadi mentor, kamu perlu mendaftar melalui halaman 'Daftar Jadi Mentor', mengisi profil lengkap termasuk pengalaman kerja, dan melewati proses verifikasi tim kami. Setelah disetujui, kamu bisa mulai menerima booking dari mentee."
+    }
+  ];
 
   // Retry helper with exponential backoff
   async function fetchWithRetry<T>(
@@ -204,7 +252,18 @@ export function HomePage() {
             </div>
           </form>
 
-          <div className="mt-5 flex justify-center items-center gap-4 text-xs text-gray-400 font-medium">
+          {/* Secondary CTA - Browse all mentors */}
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => navigate('/experts')}
+              className="text-sm text-gray-500 hover:text-brand-600 transition inline-flex items-center gap-1"
+            >
+              atau jelajahi semua mentor
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="mt-4 flex justify-center items-center gap-4 text-xs text-gray-400 font-medium">
             <p className="flex items-center gap-1">
               <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
               Dipercaya 5,000+ Profesional di Indonesia
@@ -216,32 +275,62 @@ export function HomePage() {
       {/* Why MentorinAja Section */}
       <section className="py-10 bg-slate-50 relative overflow-hidden">
         <div className="max-w-6xl mx-auto px-4 relative z-10">
-          <div className="text-center mb-8">
+          <div className="text-center mb-6">
             <h2 className="text-2xl md:text-3xl font-bold italic text-slate-900">Why MentorinAja?</h2>
             <p className="text-gray-500 mt-2 text-sm md:text-base">Alasan mengapa ribuan profesional memilih bimbingan di sini.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-            <div className="bg-white p-5 md:p-6 rounded-2xl border border-gray-100 shadow-md shadow-gray-100 hover:shadow-lg hover:-translate-y-1 transition">
-              <div className="w-10 h-10 bg-brand-50 border border-brand-100 text-brand-600 rounded-xl flex items-center justify-center mb-4">
-                <Check className="w-5 h-5" />
+
+          {/* Mobile: Carousel */}
+          <div className="md:hidden">
+            <div className="relative overflow-hidden">
+              <div 
+                className="flex transition-transform duration-300 ease-out"
+                style={{ transform: `translateX(-${whyIndex * 100}%)` }}
+              >
+                {whyReasons.map((reason, idx) => {
+                  const IconComponent = reason.icon;
+                  return (
+                    <div key={idx} className="w-full flex-shrink-0 px-2">
+                      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md shadow-gray-100 min-h-[180px] flex flex-col">
+                        <div className={`w-12 h-12 ${reason.iconBg} border rounded-xl flex items-center justify-center mb-4`}>
+                          <IconComponent className="w-6 h-6" />
+                        </div>
+                        <h3 className="font-bold text-lg mb-2 italic text-slate-900">{reason.title}</h3>
+                        <p className="text-gray-500 text-sm leading-relaxed">{reason.desc}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <h3 className="font-bold text-base mb-2 italic text-slate-900">Expert Terverifikasi</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">Semua expert melalui seleksi ketat untuk memastikan bimbingan berkualitas tinggi.</p>
             </div>
-            <div className="bg-white p-5 md:p-6 rounded-2xl border border-gray-100 shadow-md shadow-gray-100 hover:shadow-lg hover:-translate-y-1 transition">
-              <div className="w-10 h-10 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl flex items-center justify-center mb-4">
-                <MessageCircle className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-base mb-2 italic text-slate-900">Metode Interaksi Beragam</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">Konsultasi fleksibel via real-time chat, video call, hingga undang expert ke event kantor.</p>
+            {/* Dots Indicator */}
+            <div className="flex justify-center gap-2 mt-4">
+              {whyReasons.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setWhyIndex(idx)}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    idx === whyIndex ? 'bg-brand-600 w-6' : 'bg-gray-300'
+                  }`}
+                />
+              ))}
             </div>
-            <div className="bg-white p-5 md:p-6 rounded-2xl border border-gray-100 shadow-md shadow-gray-100 hover:shadow-lg hover:-translate-y-1 transition">
-              <div className="w-10 h-10 bg-green-50 border border-green-100 text-green-600 rounded-xl flex items-center justify-center mb-4">
-                <CalendarCheck className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-base mb-2 italic text-slate-900">Jadwal Fleksibel</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">Sinkronisasi kalender otomatis. Atur waktu sesi sesuai kenyamananmu tanpa ribet.</p>
-            </div>
+          </div>
+
+          {/* Desktop: Grid */}
+          <div className="hidden md:grid grid-cols-3 gap-6">
+            {whyReasons.map((reason, idx) => {
+              const IconComponent = reason.icon;
+              return (
+                <div key={idx} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md shadow-gray-100 hover:shadow-lg hover:-translate-y-1 transition">
+                  <div className={`w-10 h-10 ${reason.iconBg} border rounded-xl flex items-center justify-center mb-4`}>
+                    <IconComponent className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-bold text-base mb-2 italic text-slate-900">{reason.title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{reason.desc}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -468,6 +557,58 @@ export function HomePage() {
               <h3 className="text-base font-bold italic mb-2">Selesaikan & Mulai</h3>
               <p className="text-gray-500 text-xs leading-relaxed">Lakukan pembayaran otomatis. Link Google Meet/Zoom akan dikirim instan ke emailmu.</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-10 bg-slate-50 border-t border-gray-100">
+        <div className="max-w-3xl mx-auto px-4">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-brand-100 text-brand-600 rounded-xl mb-4">
+              <HelpCircle className="w-6 h-6" />
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold italic mb-2">Frequently Asked Questions</h2>
+            <p className="text-gray-500 text-sm">Pertanyaan yang sering ditanyakan tentang MentorinAja</p>
+          </div>
+
+          <div className="space-y-3">
+            {faqs.map((faq, idx) => (
+              <div
+                key={idx}
+                className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm"
+              >
+                <button
+                  onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+                  className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-gray-50 transition"
+                >
+                  <span className="font-semibold text-slate-900 text-sm md:text-base pr-4">{faq.question}</span>
+                  <ChevronDown 
+                    className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
+                      openFaq === idx ? 'rotate-180' : ''
+                    }`} 
+                  />
+                </button>
+                <div
+                  className={`overflow-hidden transition-all duration-200 ${
+                    openFaq === idx ? 'max-h-96' : 'max-h-0'
+                  }`}
+                >
+                  <div className="px-5 pb-4 text-gray-600 text-sm leading-relaxed">
+                    {faq.answer}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-6">
+            <p className="text-sm text-gray-500">
+              Masih punya pertanyaan?{' '}
+              <a href="mailto:support@mentorinaja.com" className="text-brand-600 hover:underline font-medium">
+                Hubungi kami
+              </a>
+            </p>
           </div>
         </div>
       </section>
