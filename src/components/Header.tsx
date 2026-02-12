@@ -63,7 +63,7 @@ export function Header({ transparent = false }: HeaderProps) {
                 onClick={() => navigate('/user/transactions')}
               >
                 <User className="w-4 h-4 mr-2" />
-                Riwayat
+                Transaksi Saya
               </Button>
               <Button
                 variant="ghost"
@@ -160,7 +160,7 @@ export function Header({ transparent = false }: HeaderProps) {
                   onClick={() => { navigate('/user/transactions'); setMobileMenuOpen(false); }}
                 >
                   <User className="w-4 h-4 mr-2" />
-                  Riwayat
+                  Transaksi Saya
                 </Button>
                 <Button
                   variant="ghost"
