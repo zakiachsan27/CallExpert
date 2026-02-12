@@ -29,3 +29,4 @@ ios/
 # Playwright
 playwright-report/
 test-results/
+secrets/

@@ -191,32 +191,32 @@ serve(async (req) => {
       status: updatedBooking.status
     })
 
-    // Assign meeting link if payment is successful and no link assigned yet
-    if (paymentStatus === 'paid' && !updatedBooking.meeting_link_id) {
-      console.log('🔗 Assigning meeting link for booking:', updatedBooking.id)
+    // Create Google Calendar meeting if payment is successful and no meeting link yet
+    if (paymentStatus === 'paid' && !updatedBooking.meeting_link) {
+      console.log('📅 Creating Google Calendar meeting for booking:', updatedBooking.id)
 
       try {
-        const assignResponse = await fetch(
-          `${Deno.env.get('SUPABASE_URL')}/functions/v1/assign-meeting-link`,
+        const createMeetingResponse = await fetch(
+          `${Deno.env.get('SUPABASE_URL')}/functions/v1/create-meeting`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
             },
-            body: JSON.stringify({ bookingId: updatedBooking.id })
+            body: JSON.stringify({ booking_id: updatedBooking.id })
           }
         )
 
-        const assignResult = await assignResponse.json()
+        const meetingResult = await createMeetingResponse.json()
 
-        if (assignResult.success) {
-          console.log('✅ Meeting link assigned successfully:', assignResult.meetingLink)
+        if (meetingResult.success) {
+          console.log('✅ Google Meet created successfully:', meetingResult.meeting_link)
         } else {
-          console.error('⚠️ Failed to assign meeting link (non-critical):', assignResult.error)
+          console.error('⚠️ Failed to create meeting (non-critical):', meetingResult.error)
         }
-      } catch (assignError) {
-        console.error('⚠️ Error calling assign-meeting-link function (non-critical):', assignError)
+      } catch (meetingError) {
+        console.error('⚠️ Error calling create-meeting function (non-critical):', meetingError)
       }
     }
 
