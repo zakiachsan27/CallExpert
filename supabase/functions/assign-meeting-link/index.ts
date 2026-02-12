@@ -260,6 +260,7 @@ serve(async (req) => {
       .from('bookings')
       .update({
         meeting_link_id: availableLink.id,
+        meeting_link: availableLink.meeting_link,  // Also set the URL directly
         updated_at: new Date().toISOString()
       })
       .eq('id', bookingId)
